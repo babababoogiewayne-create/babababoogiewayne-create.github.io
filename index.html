@@ -75,6 +75,13 @@
             -moz-appearance: none;
             appearance: none;
         }
+
+        .icon-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px;
+        }
     </style>
 </head>
 <body class="bg-black text-white">
@@ -137,7 +144,10 @@
         <div>
             <!-- Filter and Sort Controls -->
             <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-                <h2 class="text-white text-shadow-heavy" style="font-size: 36px;">Bugs</h2>
+                <div class="flex items-center gap-4">
+                    <h2 class="text-white text-shadow-heavy" style="font-size: 36px;">Bugs</h2>
+                    <input type="text" id="search-bar" placeholder="Search bugs..." class="gravitas-input" style="font-size: 18px; padding-top: 0.25rem; padding-bottom: 0.25rem; width: 12rem;">
+                </div>
                 <div class="flex gap-2 sm:gap-4">
                      <!-- Filter by Status -->
                     <div>
@@ -216,9 +226,11 @@
         const filterFeatureEl = document.getElementById('filter-feature');
         const filterStatusEl = document.getElementById('filter-status');
         const sortBugsEl = document.getElementById('sort-bugs');
+        const searchBarEl = document.getElementById('search-bar');
 
         let currentUser = null;
         let allBugs = []; // Master list of bugs from Firestore
+        let editingBugId = null; // Track which bug is being edited
 
         const statusStyles = {
             'Open': { bgColor: 'bg-yellow-400' },
@@ -272,23 +284,33 @@
         filterFeatureEl.addEventListener('change', processAndRenderBugs);
         filterStatusEl.addEventListener('change', processAndRenderBugs);
         sortBugsEl.addEventListener('change', processAndRenderBugs);
+        searchBarEl.addEventListener('input', processAndRenderBugs);
         
         function processAndRenderBugs() {
             let processedBugs = [...allBugs];
 
-            // 1. Filter by Status
+            // 1. Search
+            const searchTerm = searchBarEl.value.toLowerCase().trim();
+            if (searchTerm) {
+                processedBugs = processedBugs.filter(bug =>
+                    bug.title.toLowerCase().includes(searchTerm) ||
+                    bug.description.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            // 2. Filter by Status
             const statusFilter = filterStatusEl.value;
             if (statusFilter !== 'All') {
                 processedBugs = processedBugs.filter(bug => bug.status === statusFilter);
             }
 
-            // 2. Filter by Feature
+            // 3. Filter by Feature
             const featureFilter = filterFeatureEl.value;
             if (featureFilter !== 'All Features') {
                 processedBugs = processedBugs.filter(bug => bug.feature === featureFilter);
             }
 
-            // 3. Sort
+            // 4. Sort
             const sortValue = sortBugsEl.value;
             processedBugs.sort((a, b) => {
                 switch (sortValue) {
@@ -300,7 +322,7 @@
                 }
             });
 
-            // 4. Render
+            // 5. Render
             renderBugs(processedBugs);
         }
         
@@ -317,40 +339,77 @@
                 const bugElement = document.createElement('div');
                 const statusStyle = statusStyles[bug.status] || statusStyles['Open'];
                 bugElement.className = `ui-panel flex justify-between items-center gap-4`;
+                bugElement.setAttribute('data-bug-id', bug.id);
 
-                const adminControlsHTML = isUserAdmin ? 
-                    `<select data-id="${bug.id}" class="status-select gravitas-input" style="font-size: 16px; padding-top: 0; padding-bottom: 0; width: 8rem;">
-                        <option ${bug.status === 'Open' ? 'selected' : ''}>Open</option>
-                        <option ${bug.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-                        <option ${bug.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
-                    </select>` : '';
+                const canUserEdit = currentUser && (currentUser.email === bug.reporter || isUserAdmin);
+                const isBugLockedForUser = bug.isLocked && !isUserAdmin;
 
-                const statusSquareHTML = `<div class="w-5 h-5 ${statusStyle.bgColor}"></div>`;
+                // --- Start Building innerHTML ---
+                let bugContentHTML = '';
 
-                const formattedDate = bug.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-
-                // Conditionally show reporter's email for admin
-                const reporterInfoHTML = isUserAdmin 
-                    ? `Reported by ${bug.reporter || 'Anonymous'} on ${formattedDate}`
-                    : `Reported on ${formattedDate}`;
-
-                bugElement.innerHTML = `
-                    <div class="flex-grow">
-                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
-                            <h3 class="font-bold text-white text-shadow-heavy" style="font-size: 24px;">${bug.title}</h3>
-                            <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.feature}</span>
-                            <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.status}</span>
+                if (editingBugId === bug.id) {
+                    // EDITING VIEW
+                    bugContentHTML = `
+                        <div class="flex-grow space-y-2">
+                            <input type="text" value="${bug.title}" class="edit-title-input gravitas-input !text-2xl">
+                            <textarea class="edit-description-input gravitas-input !text-xl" rows="3">${bug.description}</textarea>
                         </div>
-                        <p class="text-slate-300 mb-3 text-shadow-heavy" style="font-size: 20px;">${bug.description}</p>
-                        <div class="text-slate-500 text-shadow-heavy" style="font-size: 16px;">
-                            ${reporterInfoHTML}
+                        <div class="flex flex-col gap-2">
+                            <button data-id="${bug.id}" class="save-bug-btn gravitas-button !text-base !py-1">Save</button>
+                            <button data-id="${bug.id}" class="cancel-edit-btn gravitas-button !text-base !py-1 !bg-gray-600 hover:!bg-gray-500">Cancel</button>
                         </div>
-                    </div>
-                    <div class="flex flex-shrink-0 items-center gap-3">
-                        ${adminControlsHTML}
-                        ${statusSquareHTML}
-                    </div>
-                `;
+                    `;
+                } else {
+                    // NORMAL VIEW
+                    const formattedDate = bug.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                    const reporterInfoHTML = isUserAdmin ? `Reported by ${bug.reporter || 'Anonymous'} on ${formattedDate}` : `Reported on ${formattedDate}`;
+
+                    const lockIconSVG = bug.isLocked 
+                        ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-red-400"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" /></svg>`
+                        : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-gray-400"><path fill-rule="evenodd" d="M14.5 1A4.5 4.5 0 0010 5.5V9H9.5a2 2 0 00-2 2v6a2 2 0 002 2h1a2 2 0 002-2v-6a2 2 0 00-2-2V5.5a3 3 0 116 0V9h.5a2 2 0 002-2v-6a2 2 0 00-2-2h-1.5z" clip-rule="evenodd" /></svg>`;
+                    
+                    const adminLockHTML = isUserAdmin 
+                        ? `<button data-id="${bug.id}" data-locked="${bug.isLocked}" class="lock-bug-btn icon-button">${lockIconSVG}</button>`
+                        : bug.isLocked ? lockIconSVG : '';
+
+                    const editButtonHTML = canUserEdit && !isBugLockedForUser
+                        ? `<button data-id="${bug.id}" class="edit-bug-btn icon-button">
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-gray-400 hover:text-white">
+                                <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                                <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
+                             </svg>
+                           </button>`
+                        : '';
+
+                    const statusSelectHTML = isUserAdmin ? 
+                        `<select data-id="${bug.id}" class="status-select gravitas-input" style="font-size: 16px; padding-top: 0; padding-bottom: 0; width: 8rem;">
+                            <option ${bug.status === 'Open' ? 'selected' : ''}>Open</option>
+                            <option ${bug.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                            <option ${bug.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+                        </select>` : '';
+
+                    bugContentHTML = `
+                        <div class="flex-grow">
+                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
+                                <h3 class="font-bold text-white text-shadow-heavy" style="font-size: 24px;">${bug.title}</h3>
+                                <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.feature}</span>
+                                <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.status}</span>
+                            </div>
+                            <p class="text-slate-300 mb-3 text-shadow-heavy" style="font-size: 20px;">${bug.description}</p>
+                            <div class="text-slate-500 text-shadow-heavy" style="font-size: 16px;">
+                                ${reporterInfoHTML}
+                            </div>
+                        </div>
+                        <div class="flex flex-shrink-0 items-center gap-3">
+                            ${adminLockHTML}
+                            ${editButtonHTML}
+                            ${statusSelectHTML}
+                            <div class="w-5 h-5 ${statusStyles[bug.status]?.bgColor}"></div>
+                        </div>
+                    `;
+                }
+                
+                bugElement.innerHTML = bugContentHTML;
                 bugList.appendChild(bugElement);
             });
         }
@@ -365,9 +424,10 @@
                 description: document.getElementById('bug-description').value,
                 priority: document.getElementById('bug-priority').value,
                 feature: document.getElementById('bug-feature').value,
-                status: 'Open', // Default status for new bugs
+                status: 'Open',
                 createdAt: new Date(),
-                reporter: currentUser.email
+                reporter: currentUser.email,
+                isLocked: false // New bugs are unlocked by default
             };
 
             try {
@@ -378,20 +438,63 @@
             }
         });
 
-        // Handle changing a bug's status (event delegation)
+        // Handle clicks and changes inside the bug list
+        bugList.addEventListener('click', async (e) => {
+            const editBtn = e.target.closest('.edit-bug-btn');
+            const saveBtn = e.target.closest('.save-bug-btn');
+            const cancelBtn = e.target.closest('.cancel-edit-btn');
+            const lockBtn = e.target.closest('.lock-bug-btn');
+
+            if (editBtn) {
+                editingBugId = editBtn.dataset.id;
+                processAndRenderBugs();
+            }
+
+            if (cancelBtn) {
+                editingBugId = null;
+                processAndRenderBugs();
+            }
+
+            if (saveBtn) {
+                const bugId = saveBtn.dataset.id;
+                const bugElement = document.querySelector(`[data-bug-id="${bugId}"]`);
+                const newTitle = bugElement.querySelector('.edit-title-input').value;
+                const newDescription = bugElement.querySelector('.edit-description-input').value;
+
+                try {
+                    const bugRef = doc(db, "bugs", bugId);
+                    await updateDoc(bugRef, { title: newTitle, description: newDescription });
+                    editingBugId = null; // Exit editing mode on save
+                    // onSnapshot will handle the re-render
+                } catch (error) {
+                    console.error("FIREBASE PERMISSION ERROR: Could not save bug. Check Firestore rules.", error);
+                    alert("Error: Could not save bug. You may not have permission.");
+                }
+            }
+            
+            if (lockBtn) {
+                const bugId = lockBtn.dataset.id;
+                const isCurrentlyLocked = lockBtn.dataset.locked === 'true';
+                try {
+                    const bugRef = doc(db, "bugs", bugId);
+                    await updateDoc(bugRef, { isLocked: !isCurrentlyLocked });
+                } catch (error) {
+                    console.error("FIREBASE PERMISSION ERROR: Could not lock bug.", error);
+                }
+            }
+        });
+
         bugList.addEventListener('change', async (e) => {
             if (e.target.classList.contains('status-select')) {
-                if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
-                    console.error("You do not have permission to change status.");
-                    return;
-                }
+                // ... existing status change logic ...
+                if (!currentUser || currentUser.email !== ADMIN_EMAIL) return;
                 const bugId = e.target.dataset.id;
                 const newStatus = e.target.value;
                 try {
                     const bugRef = doc(db, "bugs", bugId);
                     await updateDoc(bugRef, { status: newStatus });
                 } catch (error) {
-                    console.error("FIREBASE PERMISSION ERROR: Could not update bug status. This is likely due to your Firestore security rules. Please double-check that your email is correctly listed as the admin in the 'Rules' tab of your Firebase console.", error);
+                    console.error("FIREBASE PERMISSION ERROR: Could not update bug status.", error);
                 }
             }
         });
@@ -401,4 +504,3 @@
 </body>
 </html>
 
- 
