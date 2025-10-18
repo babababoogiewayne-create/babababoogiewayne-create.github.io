@@ -119,6 +119,10 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
 
+        // --- CONFIGURATION ---
+        // IMPORTANT: Replace this with your email address.
+        const ADMIN_EMAIL = "babababoogiewayne@gmail.com";
+
         // DOM Elements
         const bugForm = document.getElementById('bug-form');
         const bugList = document.getElementById('bug-list');
@@ -152,14 +156,16 @@
                 bugFormContainer.style.display = 'none';
                 document.getElementById('login-btn').addEventListener('click', () => signInWithPopup(auth, provider));
             }
-            renderBugs([]); // We will re-render bugs to show/hide close buttons
+            // We call renderBugs here to immediately update the UI (e.g., show/hide close buttons)
+            // It will be called again with data from Firestore.
+            renderBugs([]); 
         }
 
         // --- FIRESTORE DATABASE ---
 
         // Get bugs in real-time
         const bugsCollection = collection(db, "bugs");
-        const q = query(bugsCollection); // Add orderBy here if you create an index
+        const q = query(bugsCollection);
         onSnapshot(q, (querySnapshot) => {
             const bugs = [];
             querySnapshot.forEach((doc) => {
@@ -177,12 +183,14 @@
                 return;
             }
 
+            const isUserAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
+
             bugs.forEach(bug => {
                 const bugElement = document.createElement('div');
                 bugElement.className = `bug-item bg-slate-800 p-4 rounded-lg shadow-md flex justify-between items-start gap-4 ${priorityColors[bug.priority]}`;
                 
-                // Show close button only if user is logged in
-                const closeButtonHTML = currentUser ? 
+                // Show close button only if user is the admin
+                const closeButtonHTML = isUserAdmin ? 
                     `<button data-id="${bug.id}" class="close-bug-btn flex-shrink-0 px-3 py-1 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
                         Close
                     </button>` : '';
@@ -216,7 +224,7 @@
                 priority: document.getElementById('bug-priority').value,
                 feature: document.getElementById('bug-feature').value,
                 status: 'Open',
-                createdAt: new Date() // Store timestamp for sorting later
+                createdAt: new Date()
             };
 
             try {
@@ -230,8 +238,8 @@
         // Handle closing a bug (event delegation)
         bugList.addEventListener('click', async (e) => {
             if (e.target.classList.contains('close-bug-btn')) {
-                if (!currentUser) {
-                    console.error("You must be logged in to close a bug.");
+                if (!currentUser || currentUser.email !== ADMIN_EMAIL) {
+                    console.error("You do not have permission to close bugs.");
                     return;
                 }
                 const bugId = e.target.dataset.id;
