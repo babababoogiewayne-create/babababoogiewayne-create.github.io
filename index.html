@@ -193,7 +193,7 @@
         };
 
         const statusStyles = {
-            'Open': { icon: ' M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z', color: 'text-yellow-400' },
+            'Open': { icon: 'M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z', color: 'text-yellow-400' },
             'In Progress': { icon: 'm12 6.75a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-3.375 2.062a.75.75 0 0 0-1.25.625v1.875c0 .414.336.75.75.75h1.25a.75.75 0 0 0 0-1.5h-.5V9.438a.75.75 0 0 0-.25-.562Z', color: 'text-blue-400' },
             'Resolved': { icon: 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z', color: 'text-green-400' }
         };
@@ -352,7 +352,7 @@
                     const bugRef = doc(db, "bugs", bugId);
                     await updateDoc(bugRef, { status: newStatus });
                 } catch (error) {
-                    console.error("Error updating document: ", error);
+                    console.error("FIREBASE PERMISSION ERROR: Could not update bug status. This is likely due to your Firestore security rules. Please double-check that your email is correctly listed as the admin in the 'Rules' tab of your Firebase console.", error);
                 }
             }
         });
@@ -361,31 +361,4 @@
 
 </body>
 </html>
-```
-
-### Final Step: Update Your Firestore Security Rules
-
-To allow the website to change a bug's status (which is an `update` operation), you need to update your security rules one last time.
-
-1.  Go to the **Firebase Console**.
-2.  Navigate to **Build > Firestore Database > Rules**.
-3.  Replace the text in the editor with the following rules:
-
-    ```
-    rules_version = '2';
-    service cloud.firestore {
-      match /databases/{database}/documents {
-        match /bugs/{bugId} {
-          // Anyone can read the list of bugs.
-          allow read: if true;
-          
-          // Any logged-in user can create a bug.
-          allow create: if request.auth != null;
-
-          // ONLY the admin can update (e.g., change status) or delete a bug.
-          allow update, delete: if request.auth.token.email == "babababoogiewayne@gmail.com";
-        }
-      }
-    }
-    
 
