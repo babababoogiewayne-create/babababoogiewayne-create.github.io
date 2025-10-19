@@ -686,15 +686,12 @@
                 const voteButtonHTML = currentUser ? `
                     <button class="vote-button ${hasVoted ? 'voted' : ''}" data-bug-id="${bug.id}">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 icon-pixelated">
-                            <path d="M9.25 15.25a.75.75 0 01-.75-.75V4.66l-3.22 3.22a.75.75 0 11-1.06-1.06l4.5-4.5a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.06L10 4.66v9.84a.75.75 0 01-.75.75z" />
+                            <path d="M10 4l-6 6h4v6h4v-6h4l-6-6z" />
                         </svg>
                     </button>
                 ` : '';
 
                 bugElement.innerHTML = `
-                    <div class="flex flex-col items-center gap-1 pt-2">
-                        ${voteButtonHTML}
-                    </div>
                     <div class="flex-grow min-w-0">
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
                             <h3 class="font-bold text-white text-shadow-heavy" style="font-size: 24px;">${bug.title}</h3>
@@ -705,6 +702,7 @@
                         <div class="text-slate-500 text-shadow-heavy" style="font-size: 16px;">${reporterInfoHTML}</div>
                     </div>
                     <div class="flex flex-col items-center gap-1 text-center flex-shrink-0 pt-2">
+                        ${voteButtonHTML}
                         <div class="vote-count text-white">${voteCount}</div>
                         <div class="text-slate-400" style="font-size:14px;">Votes</div>
                         <div class="w-5 h-5 ${statusStyles[bug.status]?.bgColor} mt-2"></div>
@@ -737,7 +735,7 @@
                 const hasVoted = currentUser && bug.voters?.includes(currentUser.email);
                 const voteInfoHTML = `
                     <div class="flex items-center gap-2 flex-shrink-0">
-                        ${currentUser ? `<button class="vote-button ${hasVoted ? 'voted' : ''}" data-bug-id="${bug.id}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 icon-pixelated"><path d="M9.25 15.25a.75.75 0 01-.75-.75V4.66l-3.22 3.22a.75.75 0 11-1.06-1.06l4.5-4.5a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.06L10 4.66v9.84a.75.75 0 01-.75-.75z" /></svg></button>` : ''}
+                        ${currentUser ? `<button class="vote-button ${hasVoted ? 'voted' : ''}" data-bug-id="${bug.id}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 icon-pixelated"><path d="M10 4l-6 6h4v6h4v-6h4l-6-6z" /></svg></button>` : ''}
                         <div class="flex flex-col items-center">
                             <div class="vote-count text-white">${voteCount}</div>
                             <div class="text-slate-500" style="font-size:12px;">VOTES</div>
@@ -1144,5 +1142,6 @@
 
 </body>
 </html>
+
 
 
