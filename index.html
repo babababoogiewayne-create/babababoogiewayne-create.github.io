@@ -172,6 +172,24 @@
           animation: pulse-red 2s infinite;
         }
 
+        @keyframes pulse-red-text {
+          0%, 100% {
+            text-shadow: 0 0 5px #ef4444, 0 0 10px #ef4444, 2px 2px 2px #000;
+            color: #ef4444;
+          }
+          50% {
+            text-shadow: 0 0 15px #f87171, 0 0 25px #f87171, 2px 2px 2px #000;
+            color: #fca5a5;
+          }
+        }
+        .glow-red-text {
+          animation: pulse-red-text 2s infinite;
+        }
+        .mode-toggle.active {
+            background-color: #1d4ed8;
+            border-color: #60a5fa;
+        }
+
         /* Markdown formatting styles */
         .markdown-content ul, .markdown-content ol {
             margin-left: 20px;
@@ -226,7 +244,7 @@
          <!-- Dashboard Section -->
         <div id="dashboard" class="ui-panel mb-8">
             <h2 class="text-white text-shadow-heavy text-center" style="font-size: 30px; margin-bottom: 1rem;">Project Dashboard</h2>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                 <!-- Counters -->
                 <div class="ui-panel !bg-black/20">
                     <div id="resolved-bugs" class="text-5xl text-green-400 text-shadow-heavy">0</div>
@@ -234,18 +252,14 @@
                 </div>
                  <div class="ui-panel !bg-black/20">
                     <div id="open-bugs" class="text-5xl text-yellow-400 text-shadow-heavy">0</div>
-                    <div class="text-xl text-slate-400">Open Bugs</div>
-                </div>
-                 <div class="ui-panel !bg-black/20">
-                    <div id="critical-bugs" class="text-5xl text-red-500 text-shadow-heavy">0</div>
-                    <div class="text-xl text-slate-400">Critical Open</div>
+                    <div class="text-xl text-slate-400">Unresolved Bugs</div>
                 </div>
                 <div class="ui-panel !bg-black/20">
-                    <div id="urgent-bugs" class="text-5xl text-red-500 text-shadow-heavy">0</div>
+                    <div id="urgent-bugs" class="text-5xl text-red-500 text-shadow-heavy glow-red-text">0</div>
                     <div class="text-xl text-slate-400">Urgent Bugs</div>
                 </div>
                 <!-- Charts -->
-                <div class="md:col-span-2 ui-panel !bg-black/20">
+                <div class="md:col-span-1 ui-panel !bg-black/20">
                      <h3 class="text-xl text-slate-300 mb-2">Bugs by Status</h3>
                     <canvas id="status-chart"></canvas>
                 </div>
@@ -281,13 +295,40 @@
                     <div>
                         <label for="bug-feature" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Game Feature</label>
                         <select id="bug-feature" class="gravitas-input">
-                            <option>Gravity Mechanics</option>
-                            <option>Blocks & Slabs</option>
-                            <option>Player Models</option>
-                            <option>Multiplayer</option>
-                            <option>UI/UX</option>
-                            <option>Other</option>
+                            <optgroup label="Core Mechanics">
+                                <option>Player Movement</option>
+                                <option>Player Animation</option>
+                                <option>Gravity Fields</option>
+                                <option>Block Interaction</option>
+                                <option>Crafting/Inventory</option>
+                            </optgroup>
+                            <optgroup label="World & Environment">
+                                <option>World Generation</option>
+                                <option>Lighting & Shadows</option>
+                                <option>Physics & Collisions</option>
+                            </optgroup>
+                            <optgroup label="Items & Blocks">
+                                <option>Block(s)</option>
+                                <option>Non-cube block(s)</option>
+                                <option>Tools & Equipment</option>
+                                <option>Logic Block(s)</option>
+                            </optgroup>
+                            <optgroup label="Technical">
+                                <option>Performance/Lag</option>
+                                <option>Crashes</option>
+                                <option>Multiplayer/Netcode</option>
+                                <option>UI/UX</option>
+                                <option>Audio</option>
+                            </optgroup>
+                             <option>Other</option>
                         </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Game Mode(s)</label>
+                    <div id="game-mode-toggles" class="flex gap-2">
+                        <button type="button" class="mode-toggle gravitas-input !w-auto !px-4" data-mode="Singleplayer">Singleplayer</button>
+                        <button type="button" class="mode-toggle gravitas-input !w-auto !px-4" data-mode="Multiplayer">Multiplayer</button>
                     </div>
                 </div>
                 <div>
@@ -314,22 +355,42 @@
                         <label for="filter-status" class="sr-only">Filter by status</label>
                         <select id="filter-status" class="gravitas-input" style="font-size: 18px; padding-top: 0.25rem; padding-bottom: 0.25rem;">
                             <option value="All">All Bugs</option>
-                            <option value="Open">Open Bugs</option>
+                            <option value="Open">Open</option>
                             <option value="In Progress">In Progress</option>
                             <option value="Urgent">Urgent</option>
-                            <option value="Resolved">Resolved Bugs</option>
+                            <option value="Resolved">Resolved</option>
                         </select>
                     </div>
                     <!-- Filter by Feature --><div>
                         <label for="filter-feature" class="sr-only">Filter by feature</label>
                         <select id="filter-feature" class="gravitas-input" style="font-size: 18px; padding-top: 0.25rem; padding-bottom: 0.25rem;">
-                            <option>All Features</option>
-                            <option>Gravity Mechanics</option>
-                            <option>Blocks & Slabs</option>
-                            <option>Player Models</option>
-                            <option>Multiplayer</option>
-                            <option>UI/UX</option>
-                            <option>Other</option>
+                             <option>All Features</option>
+                            <optgroup label="Core Mechanics">
+                                <option>Player Movement</option>
+                                <option>Player Animation</option>
+                                <option>Gravity Fields</option>
+                                <option>Block Interaction</option>
+                                <option>Crafting/Inventory</option>
+                            </optgroup>
+                            <optgroup label="World & Environment">
+                                <option>World Generation</option>
+                                <option>Lighting & Shadows</option>
+                                <option>Physics & Collisions</option>
+                            </optgroup>
+                            <optgroup label="Items & Blocks">
+                                <option>Block(s)</option>
+                                <option>Non-cube block(s)</option>
+                                <option>Tools & Equipment</option>
+                                <option>Logic Block(s)</option>
+                            </optgroup>
+                            <optgroup label="Technical">
+                                <option>Performance/Lag</option>
+                                <option>Crashes</option>
+                                <option>Multiplayer/Netcode</option>
+                                <option>UI/UX</option>
+                                <option>Audio</option>
+                            </optgroup>
+                             <option>Other</option>
                         </select>
                     </div>
                     <!-- Sort by --><div>
@@ -436,6 +497,7 @@
         const bugDescriptionInput = document.getElementById('bug-description');
         const bugTitleCounter = document.getElementById('bug-title-counter');
         const bugDescriptionCounter = document.getElementById('bug-description-counter');
+        const gameModeToggles = document.getElementById('game-mode-toggles');
         
         // Modal DOM Elements
         const bugDetailModal = document.getElementById('bug-detail-modal');
@@ -468,6 +530,7 @@
 
         let statusChart = null;
         let featureChart = null;
+        let chartAnimationInterval = null;
 
         const statusStyles = {
             'Open': { bgColor: 'bg-yellow-400' },
@@ -487,6 +550,12 @@
         setupCounter(bugTitleInput, bugTitleCounter, 64);
         setupCounter(bugDescriptionInput, bugDescriptionCounter, 16384);
         setupCounter(commentInput, commentInputCounter, 1024);
+
+        gameModeToggles.addEventListener('click', (e) => {
+            if (e.target.classList.contains('mode-toggle')) {
+                e.target.classList.toggle('active');
+            }
+        });
 
         // --- AUTHENTICATION ---
         onAuthStateChanged(auth, (user) => {
@@ -557,13 +626,11 @@
         // --- DASHBOARD & ANALYTICS ---
         function updateDashboard(bugs) {
             const resolvedBugs = bugs.filter(b => b.status === 'Resolved').length;
-            const openBugs = bugs.filter(b => b.status === 'Open' || b.status === 'In Progress' || b.status === 'Urgent').length;
-            const criticalBugs = bugs.filter(b => b.status !== 'Resolved' && b.priority === 'Critical').length;
+            const unresolvedBugs = bugs.filter(b => b.status !== 'Resolved').length;
             const urgentBugs = bugs.filter(b => b.status === 'Urgent').length;
 
             document.getElementById('resolved-bugs').textContent = resolvedBugs;
-            document.getElementById('open-bugs').textContent = openBugs;
-            document.getElementById('critical-bugs').textContent = criticalBugs;
+            document.getElementById('open-bugs').textContent = unresolvedBugs;
             document.getElementById('urgent-bugs').textContent = urgentBugs;
             
             // Status Chart Data
@@ -620,6 +687,28 @@
                     }
                 }
             });
+
+            if (chartAnimationInterval) clearInterval(chartAnimationInterval);
+            const urgentIndex = statusData.labels.indexOf('Urgent');
+
+            if (urgentIndex !== -1) {
+                chartAnimationInterval = setInterval(() => {
+                    if (!statusChart) return;
+                    const time = new Date().getTime() / 400; 
+                    const alpha = (Math.sin(time) + 1) / 2;
+
+                    const r = Math.round(220 + (252 - 220) * alpha);
+                    const g = Math.round(38 + (114 - 38) * alpha);
+                    const b = Math.round(38 + (114 - 38) * alpha);
+                    const pulsatingColor = `rgb(${r},${g},${b})`;
+                    
+                    if (statusChart.data.datasets[0].backgroundColor) {
+                        statusChart.data.datasets[0].backgroundColor[urgentIndex] = pulsatingColor;
+                        statusChart.update('none');
+                    }
+                }, 1000 / 30);
+            }
+
 
             const featureCtx = document.getElementById('feature-chart').getContext('2d');
             if(featureChart) featureChart.destroy();
@@ -717,12 +806,27 @@
                     </button>
                 ` : '';
 
+                const statusDisplay = bug.resolution ? `${bug.status} - ${bug.resolution}` : bug.status;
+                const gameModesHTML = (bug.gameModes || []).map(mode => `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${mode}</span>`).join(' ');
+
+                const resolutionSelectHTML = bug.status === 'Resolved' && isUserAdmin ? `
+                    <select data-id="${bug.id}" class="resolution-select gravitas-input mt-1" style="font-size: 16px; padding-top: 0; padding-bottom: 0; width: 8rem;">
+                        <option ${!bug.resolution ? 'selected' : ''} disabled>Set Resolution</option>
+                        <option ${bug.resolution === 'Fixed' ? 'selected' : ''}>Fixed</option>
+                        <option ${bug.resolution === 'Won\'t Fix' ? 'selected' : ''}>Won't Fix</option>
+                        <option ${bug.resolution === 'Duplicate' ? 'selected' : ''}>Duplicate</option>
+                        <option ${bug.resolution === 'Invalid' ? 'selected' : ''}>Invalid</option>
+                        <option ${bug.resolution === 'Works as Intended' ? 'selected' : ''}>Works as Intended</option>
+                    </select>
+                ` : '';
+
                 bugElement.innerHTML = `
                     <div class="flex-grow min-w-0">
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
                             <h3 class="font-bold text-white text-shadow-heavy" style="font-size: 24px;">${bug.title}</h3>
-                            <span class="text-shadow-heavy bg-black/ ৫০ px-2" style="font-size: 18px;">${bug.feature}</span>
-                            <span class="text-shadow-heavy bg-black/ ৫০ px-2" style="font-size: 18px;">${bug.status}</span>
+                            <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.feature}</span>
+                            ${gameModesHTML}
+                            <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${statusDisplay}</span>
                         </div>
                         <p class="text-slate-300 mb-3 text-shadow-heavy" style="font-size: 20px;">${bug.description}</p>
                         <div class="text-slate-500 text-shadow-heavy" style="font-size: 16px;">${reporterInfoHTML}</div>
@@ -734,7 +838,10 @@
                             <div class="vote-count text-white">${voteCount}</div>
                         </div>
                         <div class="text-slate-400" style="font-size:14px; margin-top: -0.25rem;">Votes</div>
-                        ${isUserAdmin ? `<select data-id="${bug.id}" class="status-select gravitas-input mt-1" style="font-size: 16px; padding-top: 0; padding-bottom: 0; width: 8rem;"><option ${bug.status === 'Open' ? 'selected' : ''}>Open</option><option ${bug.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${bug.status === 'Urgent' ? 'selected' : ''}>Urgent</option><option ${bug.status === 'Resolved' ? 'selected' : ''}>Resolved</option></select>` : ''}
+                        <div class="admin-controls mt-1" data-bug-id="${bug.id}">
+                            ${isUserAdmin ? `<select class="status-select gravitas-input" style="font-size: 16px; padding-top: 0; padding-bottom: 0; width: 8rem;"><option ${bug.status === 'Open' ? 'selected' : ''}>Open</option><option ${bug.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${bug.status === 'Urgent' ? 'selected' : ''}>Urgent</option><option ${bug.status === 'Resolved' ? 'selected' : ''}>Resolved</option></select>` : ''}
+                            ${resolutionSelectHTML}
+                        </div>
                     </div>`;
                 bugList.appendChild(bugElement);
             });
@@ -780,9 +887,11 @@
                 detailActionsContainer.innerHTML = `${voteInfoHTML} ${adminLockHTML} ${editButtonHTML} ${deleteButtonHTML}`;
             }
 
+            const statusDisplay = bug.resolution ? `${bug.status} - ${bug.resolution}` : bug.status;
             const formattedDate = bug.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
             const reporterInfoHTML = isUserAdmin ? `Reported by ${bug.reporter || 'Anonymous'} on ${formattedDate}` : `Reported on ${formattedDate}`;
-            detailMeta.innerHTML = `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.feature}</span> | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.status}</span> | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">Priority: ${bug.priority}</span><br><span>${reporterInfoHTML}</span>`;
+            const gameModesText = (bug.gameModes && bug.gameModes.length > 0) ? ` | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.gameModes.join(', ')}</span>` : '';
+            detailMeta.innerHTML = `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.feature}</span> | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${statusDisplay}</span>${gameModesText} | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">Priority: ${bug.priority}</span><br><span>${reporterInfoHTML}</span>`;
             
             detailAttachmentContainer.innerHTML = '';
             if (bug.attachments && bug.attachments.length > 0) {
@@ -1029,8 +1138,6 @@
                 const deleteBtn = e.target.closest('#delete-detail-btn');
                 if (deleteBtn.dataset.confirm === 'true') {
                     try {
-                        // NOTE: This deletes the bug document but not its subcollections (comments).
-                        // A complete solution would use a Cloud Function to recursively delete.
                         await deleteDoc(doc(db, "bugs", activeBugId));
                         closeDetailView();
                     } catch (error) { console.error("PERM ERROR: deleting bug", error); }
@@ -1052,7 +1159,7 @@
         });
 
         async function handleVote(bugId) {
-            if (!currentUser) return; // Or show login prompt
+            if (!currentUser) return;
 
             const bugRef = doc(db, "bugs", bugId);
             const bug = allBugs.find(b => b.id === bugId);
@@ -1079,17 +1186,45 @@
                 console.error("Error updating votes:", error);
             }
         }
+        
+        bugList.addEventListener('change', async (e) => {
+            const adminControls = e.target.closest('.admin-controls');
+            if (!adminControls) return;
+            
+            const bugId = adminControls.dataset.bugId;
+            const isUserAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
+            if (!isUserAdmin) return;
+            
+            if (e.target.classList.contains('status-select')) {
+                const newStatus = e.target.value;
+                const updateData = { status: newStatus };
+                // If moving away from Resolved, clear the resolution
+                if (newStatus !== 'Resolved') {
+                    updateData.resolution = null;
+                }
+                try {
+                    await updateDoc(doc(db, "bugs", bugId), updateData);
+                } catch (error) { console.error("PERM ERROR: updating status", error); }
+            }
+            
+            if (e.target.classList.contains('resolution-select')) {
+                const newResolution = e.target.value;
+                 try {
+                    await updateDoc(doc(db, "bugs", bugId), { resolution: newResolution });
+                } catch (error) { console.error("PERM ERROR: updating resolution", error); }
+            }
+        });
 
         bugList.addEventListener('click', async (e) => {
             const bugElement = e.target.closest('[data-bug-id]');
             if (!bugElement) return;
 
             const voteButton = e.target.closest('.vote-button');
-            const statusSelect = e.target.closest('select.status-select');
+            const isInteractive = e.target.closest('select');
 
             if (voteButton) {
                 handleVote(bugElement.dataset.bugId);
-            } else if (!statusSelect) {
+            } else if (!isInteractive) {
                 openDetailView(bugElement.dataset.bugId);
             }
         });
@@ -1098,18 +1233,6 @@
             const voteButton = e.target.closest('.vote-button');
             if (voteButton) {
                 handleVote(voteButton.dataset.bugId);
-            }
-        });
-
-
-        bugList.addEventListener('change', async (e) => {
-             if (e.target.classList.contains('status-select')) {
-                if (!currentUser || currentUser.email !== ADMIN_EMAIL) return;
-                const bugId = e.target.dataset.id;
-                const newStatus = e.target.value;
-                try {
-                    await updateDoc(doc(db, "bugs", bugId), { status: newStatus });
-                } catch (error) { console.error("PERM ERROR: updating status", error); }
             }
         });
         
@@ -1141,6 +1264,11 @@
         });
 
         async function createBugDocument(attachments) {
+            const selectedModes = [];
+            document.querySelectorAll('#game-mode-toggles .mode-toggle.active').forEach(toggle => {
+                selectedModes.push(toggle.dataset.mode);
+            });
+
             const newBug = {
                 title: document.getElementById('bug-title').value,
                 description: document.getElementById('bug-description').value,
@@ -1152,12 +1280,17 @@
                 isLocked: false,
                 attachments: attachments,
                 votes: 0,
-                voters: []
+                voters: [],
+                resolution: null,
+                gameModes: selectedModes
             };
 
             try {
                 await addDoc(bugsCollection, newBug);
                 bugForm.reset();
+                document.querySelectorAll('#game-mode-toggles .mode-toggle.active').forEach(toggle => {
+                    toggle.classList.remove('active');
+                });
                 updatePreview([], attachmentPreviewContainer, bugAttachmentFiles);
             } catch (error) {
                 console.error("Error adding document: ", error);
@@ -1168,8 +1301,5 @@
 
 </body>
 </html>
-
-
-
 
 
