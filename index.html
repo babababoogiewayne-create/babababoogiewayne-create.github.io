@@ -254,6 +254,7 @@
                 <div class="flex items-center gap-4">
                     <h2 class="text-white text-shadow-heavy" style="font-size: 36px;">Bugs</h2>
                     <input type="text" id="search-bar" placeholder="Search bugs..." class="gravitas-input" style="font-size: 18px; padding-top: 0.25rem; padding-bottom: 0.25rem; width: 12rem;">
+                    <div id="my-bugs-btn-container"></div>
                 </div>
                 <div class="flex gap-2 sm:gap-4">
                      <!-- Filter by Status --><div>
@@ -367,6 +368,7 @@
         const filterStatusEl = document.getElementById('filter-status');
         const sortBugsEl = document.getElementById('sort-bugs');
         const searchBarEl = document.getElementById('search-bar');
+        const myBugsBtnContainer = document.getElementById('my-bugs-btn-container');
         const uploadProgressEl = document.getElementById('upload-progress');
         const bugAttachmentInput = document.getElementById('bug-attachment');
         const attachmentPreviewContainer = document.getElementById('attachment-preview-container');
@@ -396,6 +398,7 @@
         let editingCommentId = null;
         let activeBugId = null; 
         let unsubscribeComments = null; 
+        let isMyBugsViewActive = false;
         
         let bugAttachmentFiles = [];
         let commentAttachmentFiles = [];
@@ -432,16 +435,40 @@
         function updateUIForAuthState() {
             if (currentUser) {
                 authContainer.innerHTML = `<button id="logout-btn" class="gravitas-button" style="width: auto; font-size: 18px; background-color: #991b1b;">Logout</button>`;
-                bugFormContainer.style.display = 'block';
+                myBugsBtnContainer.innerHTML = `<button id="my-bugs-btn" class="gravitas-button !text-base !py-1 !px-3">My Bugs</button>`;
                 document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+                document.getElementById('my-bugs-btn').addEventListener('click', toggleMyBugsView);
                 document.getElementById('logout-btn').onmouseover = (e) => e.target.style.backgroundColor = '#b91c1c';
                 document.getElementById('logout-btn').onmouseout = (e) => e.target.style.backgroundColor = '#991b1b';
+                bugFormContainer.style.display = 'block';
             } else {
                 authContainer.innerHTML = `<button id="login-btn" class="gravitas-button" style="width: auto; font-size: 18px; background-color: #1e40af;">Login</button>`;
-                bugFormContainer.style.display = 'none';
+                myBugsBtnContainer.innerHTML = '';
+                isMyBugsViewActive = false;
                 document.getElementById('login-btn').addEventListener('click', () => signInWithPopup(auth, provider));
                 document.getElementById('login-btn').onmouseover = (e) => e.target.style.backgroundColor = '#1d4ed8';
                 document.getElementById('login-btn').onmouseout = (e) => e.target.style.backgroundColor = '#1e40af';
+                bugFormContainer.style.display = 'none';
+            }
+            updateMyBugsButtonState();
+        }
+        
+        function toggleMyBugsView() {
+            isMyBugsViewActive = !isMyBugsViewActive;
+            updateMyBugsButtonState();
+            processAndRenderBugs();
+        }
+
+        function updateMyBugsButtonState() {
+            const myBugsBtn = document.getElementById('my-bugs-btn');
+            if (myBugsBtn) {
+                if (isMyBugsViewActive) {
+                    myBugsBtn.style.backgroundColor = '#1d4ed8'; // Active color
+                    myBugsBtn.style.borderColor = '#60a5fa';
+                } else {
+                    myBugsBtn.style.backgroundColor = '#444'; // Default color
+                    myBugsBtn.style.borderColor = '#222';
+                }
             }
         }
 
@@ -560,6 +587,11 @@
         
         function processAndRenderBugs() {
             let processedBugs = [...allBugs];
+
+            if (isMyBugsViewActive && currentUser) {
+                processedBugs = processedBugs.filter(bug => bug.reporter === currentUser.email);
+            }
+
             const searchTerm = searchBarEl.value.toLowerCase().trim();
             if (searchTerm) {
                 processedBugs = processedBugs.filter(bug =>
@@ -962,4 +994,6 @@
 
 </body>
 </html>
+
+
 
