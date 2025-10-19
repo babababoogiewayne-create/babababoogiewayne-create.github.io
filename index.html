@@ -128,26 +128,25 @@
         }
         
         .vote-button {
-            background-color: #333;
-            border: 2px solid #555;
+            background: none;
+            border: none;
             color: white;
-            padding: 4px;
-            font-size: 20px;
+            padding: 2px;
             cursor: pointer;
             transition: all 0.2s;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
         }
 
         .vote-button:hover {
-            background-color: #555;
-            border-color: #777;
+            background: none;
+            color: #aaa;
         }
 
         .vote-button.voted {
-            background-color: #1d4ed8;
-            border-color: #60a5fa;
+            background: none;
+            color: #60a5fa;
         }
 
         .vote-count {
@@ -155,6 +154,22 @@
             text-shadow: 2px 2px 2px #000;
             min-width: 2rem; /* Keep layout stable */
             text-align: center;
+        }
+
+        @keyframes pulse-red {
+          0%, 100% {
+            box-shadow: 0 0 5px #ef4444, 0 0 10px #ef4444;
+            background-color: #b91c1c;
+          }
+          50% {
+            box-shadow: 0 0 15px #f87171, 0 0 25px #f87171;
+            background-color: #dc2626;
+          }
+        }
+
+        .status-urgent {
+          background-color: #991b1b; /* dark red */
+          animation: pulse-red 2s infinite;
         }
 
         /* Markdown formatting styles */
@@ -211,7 +226,7 @@
          <!-- Dashboard Section -->
         <div id="dashboard" class="ui-panel mb-8">
             <h2 class="text-white text-shadow-heavy text-center" style="font-size: 30px; margin-bottom: 1rem;">Project Dashboard</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
                 <!-- Counters -->
                 <div class="ui-panel !bg-black/20">
                     <div id="resolved-bugs" class="text-5xl text-green-400 text-shadow-heavy">0</div>
@@ -225,8 +240,12 @@
                     <div id="critical-bugs" class="text-5xl text-red-500 text-shadow-heavy">0</div>
                     <div class="text-xl text-slate-400">Critical Open</div>
                 </div>
+                <div class="ui-panel !bg-black/20">
+                    <div id="urgent-bugs" class="text-5xl text-red-500 text-shadow-heavy">0</div>
+                    <div class="text-xl text-slate-400">Urgent Bugs</div>
+                </div>
                 <!-- Charts -->
-                <div class="md:col-span-1 ui-panel !bg-black/20">
+                <div class="md:col-span-2 ui-panel !bg-black/20">
                      <h3 class="text-xl text-slate-300 mb-2">Bugs by Status</h3>
                     <canvas id="status-chart"></canvas>
                 </div>
@@ -297,6 +316,7 @@
                             <option value="All">All Bugs</option>
                             <option value="Open">Open Bugs</option>
                             <option value="In Progress">In Progress</option>
+                            <option value="Urgent">Urgent</option>
                             <option value="Resolved">Resolved Bugs</option>
                         </select>
                     </div>
@@ -452,7 +472,8 @@
         const statusStyles = {
             'Open': { bgColor: 'bg-yellow-400' },
             'In Progress': { bgColor: 'bg-blue-400' },
-            'Resolved': { bgColor: 'bg-green-400' }
+            'Resolved': { bgColor: 'bg-green-400' },
+            'Urgent': { bgColor: 'status-urgent' }
         };
 
         const priorityValues = { 'Low': 0, 'Medium': 1, 'High': 2, 'Critical': 3 };
@@ -536,12 +557,14 @@
         // --- DASHBOARD & ANALYTICS ---
         function updateDashboard(bugs) {
             const resolvedBugs = bugs.filter(b => b.status === 'Resolved').length;
-            const openBugs = bugs.filter(b => b.status === 'Open' || b.status === 'In Progress').length;
+            const openBugs = bugs.filter(b => b.status === 'Open' || b.status === 'In Progress' || b.status === 'Urgent').length;
             const criticalBugs = bugs.filter(b => b.status !== 'Resolved' && b.priority === 'Critical').length;
+            const urgentBugs = bugs.filter(b => b.status === 'Urgent').length;
 
             document.getElementById('resolved-bugs').textContent = resolvedBugs;
             document.getElementById('open-bugs').textContent = openBugs;
             document.getElementById('critical-bugs').textContent = criticalBugs;
+            document.getElementById('urgent-bugs').textContent = urgentBugs;
             
             // Status Chart Data
             const statusCounts = bugs.reduce((acc, bug) => {
@@ -549,15 +572,18 @@
                 return acc;
             }, {});
 
+            const statusColors = {
+                'Open': '#FBBF24',
+                'In Progress': '#60A5FA',
+                'Resolved': '#4ADE80',
+                'Urgent': '#dc2626'
+            };
+
             const statusData = {
                 labels: Object.keys(statusCounts),
                 datasets: [{
                     data: Object.values(statusCounts),
-                    backgroundColor: [
-                        '#FBBF24', // Yellow for Open
-                        '#60A5FA', // Blue for In Progress
-                        '#4ADE80'  // Green for Resolved
-                    ],
+                    backgroundColor: Object.keys(statusCounts).map(status => statusColors[status] || '#888'),
                     borderColor: '#111',
                 }]
             };
@@ -695,18 +721,20 @@
                     <div class="flex-grow min-w-0">
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
                             <h3 class="font-bold text-white text-shadow-heavy" style="font-size: 24px;">${bug.title}</h3>
-                            <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.feature}</span>
-                            <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.status}</span>
+                            <span class="text-shadow-heavy bg-black/ ৫০ px-2" style="font-size: 18px;">${bug.feature}</span>
+                            <span class="text-shadow-heavy bg-black/ ৫০ px-2" style="font-size: 18px;">${bug.status}</span>
                         </div>
                         <p class="text-slate-300 mb-3 text-shadow-heavy" style="font-size: 20px;">${bug.description}</p>
                         <div class="text-slate-500 text-shadow-heavy" style="font-size: 16px;">${reporterInfoHTML}</div>
                     </div>
-                    <div class="flex flex-col items-center gap-1 text-center flex-shrink-0 pt-2">
-                        ${voteButtonHTML}
-                        <div class="vote-count text-white">${voteCount}</div>
-                        <div class="text-slate-400" style="font-size:14px;">Votes</div>
-                        <div class="w-5 h-5 ${statusStyles[bug.status]?.bgColor} mt-2"></div>
-                        ${isUserAdmin ? `<select data-id="${bug.id}" class="status-select gravitas-input mt-2" style="font-size: 16px; padding-top: 0; padding-bottom: 0; width: 8rem;"><option ${bug.status === 'Open' ? 'selected' : ''}>Open</option><option ${bug.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${bug.status === 'Resolved' ? 'selected' : ''}>Resolved</option></select>` : ''}
+                    <div class="flex flex-col items-center gap-2 text-center flex-shrink-0 pt-2">
+                        <div class="w-5 h-5 ${statusStyles[bug.status]?.bgColor}"></div>
+                        <div class="flex items-center gap-1">
+                            ${voteButtonHTML}
+                            <div class="vote-count text-white">${voteCount}</div>
+                        </div>
+                        <div class="text-slate-400" style="font-size:14px; margin-top: -0.25rem;">Votes</div>
+                        ${isUserAdmin ? `<select data-id="${bug.id}" class="status-select gravitas-input mt-1" style="font-size: 16px; padding-top: 0; padding-bottom: 0; width: 8rem;"><option ${bug.status === 'Open' ? 'selected' : ''}>Open</option><option ${bug.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${bug.status === 'Urgent' ? 'selected' : ''}>Urgent</option><option ${bug.status === 'Resolved' ? 'selected' : ''}>Resolved</option></select>` : ''}
                     </div>`;
                 bugList.appendChild(bugElement);
             });
@@ -736,10 +764,8 @@
                 const voteInfoHTML = `
                     <div class="flex items-center gap-2 flex-shrink-0">
                         ${currentUser ? `<button class="vote-button ${hasVoted ? 'voted' : ''}" data-bug-id="${bug.id}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 icon-pixelated"><path d="M10 4l-6 6h4v6h4v-6h4l-6-6z" /></svg></button>` : ''}
-                        <div class="flex flex-col items-center">
-                            <div class="vote-count text-white">${voteCount}</div>
-                            <div class="text-slate-500" style="font-size:12px;">VOTES</div>
-                        </div>
+                        <div class="vote-count text-white">${voteCount}</div>
+                        <div class="text-slate-500" style="font-size:14px;">VOTES</div>
                     </div>`;
 
                 detailTitleContainer.innerHTML = `<h2 id="detail-title" class="text-white text-shadow-heavy" style="font-size: 30px;">${bug.title}</h2>`;
@@ -1142,6 +1168,8 @@
 
 </body>
 </html>
+
+
 
 
 
