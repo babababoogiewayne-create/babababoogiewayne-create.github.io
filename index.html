@@ -146,9 +146,14 @@
                         </select>
                     </div>
                 </div>
+                <div>
+                    <label for="bug-attachment" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Attach Image (Optional)</label>
+                    <input type="file" id="bug-attachment" class="gravitas-input" accept="image/*">
+                </div>
                 <button type="submit" class="gravitas-button mt-4">
                     Add Bug
                 </button>
+                <div id="upload-progress" class="text-center text-lg text-yellow-400 text-shadow-heavy" style="display: none;"></div>
             </form>
         </div>
 
@@ -213,6 +218,8 @@
                 <div class="space-y-2 text-shadow-heavy">
                     <p id="detail-description" class="text-slate-300" style="font-size: 20px;"></p>
                     <div id="detail-meta" class="text-slate-500" style="font-size: 16px;"></div>
+                     <!-- Attachment Display -->
+                    <div id="detail-attachment-container" class="mt-4"></div>
                 </div>
                 
                 <!-- Comments Section -->
@@ -234,7 +241,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, query, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
+        
         // Your web app's Firebase configuration
         const firebaseConfig = {
           apiKey: "AIzaSyA8PWIxwubwv0GR1e5r78vYyAyo5ePlTgg",
@@ -253,6 +260,8 @@
 
         // --- CONFIGURATION ---
         const ADMIN_EMAIL = "babababoogiewayne@gmail.com";
+        const CLOUDINARY_CLOUD_NAME = "dxfkyg5kv";
+        const CLOUDINARY_UPLOAD_PRESET = "gravitas_bugs";
 
         // DOM Elements
         const bugForm = document.getElementById('bug-form');
@@ -263,6 +272,7 @@
         const filterStatusEl = document.getElementById('filter-status');
         const sortBugsEl = document.getElementById('sort-bugs');
         const searchBarEl = document.getElementById('search-bar');
+        const uploadProgressEl = document.getElementById('upload-progress');
         
         // Modal DOM Elements
         const bugDetailModal = document.getElementById('bug-detail-modal');
@@ -270,6 +280,7 @@
         const detailTitle = document.getElementById('detail-title');
         const detailDescription = document.getElementById('detail-description');
         const detailMeta = document.getElementById('detail-meta');
+        const detailAttachmentContainer = document.getElementById('detail-attachment-container');
         const commentList = document.getElementById('comment-list');
         const commentForm = document.getElementById('comment-form');
         const commentInput = document.getElementById('comment-input');
@@ -436,6 +447,15 @@
                 <br>
                 <span>${reporterInfoHTML}</span>
             `;
+            
+            // Display attachment
+            detailAttachmentContainer.innerHTML = '';
+            if (bug.attachmentURL) {
+                detailAttachmentContainer.innerHTML = `
+                    <h3 class="text-white text-shadow-heavy" style="font-size: 24px; margin-bottom: 0.5rem;">Attachment</h3>
+                    <img src="${bug.attachmentURL}" class="max-w-full rounded-md border-2 border-gray-600" style="image-rendering: pixelated;" />
+                `;
+            }
 
             bugDetailModal.style.display = 'flex';
             
@@ -537,6 +557,71 @@
                 } catch (error) { console.error("PERM ERROR: updating status", error); }
             }
         });
+        
+        // Handle form submission to add a new bug
+        bugForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            uploadProgressEl.style.display = 'block';
+            uploadProgressEl.textContent = 'Preparing bug report...';
+
+            const attachmentFile = document.getElementById('bug-attachment').files[0];
+            let attachmentURL = null;
+
+            if (attachmentFile) {
+                uploadProgressEl.textContent = 'Uploading attachment...';
+                const formData = new FormData();
+                formData.append('file', attachmentFile);
+                formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+                
+                try {
+                    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    if (data.secure_url) {
+                        attachmentURL = data.secure_url;
+                    } else {
+                        throw new Error('Upload failed');
+                    }
+                } catch (error) {
+                    console.error("Upload failed:", error);
+                    alert("Error: File upload failed.");
+                    submitButton.disabled = false;
+                    uploadProgressEl.style.display = 'none';
+                    return;
+                }
+            }
+            
+            await createBugDocument(attachmentURL);
+            submitButton.disabled = false;
+            uploadProgressEl.style.display = 'none';
+        });
+
+        async function createBugDocument(attachmentURL) {
+            const newBug = {
+                title: document.getElementById('bug-title').value,
+                description: document.getElementById('bug-description').value,
+                priority: document.getElementById('bug-priority').value,
+                feature: document.getElementById('bug-feature').value,
+                status: 'Open',
+                createdAt: new Date(),
+                reporter: currentUser.email,
+                isLocked: false,
+                attachmentURL: attachmentURL
+            };
+
+            try {
+                await addDoc(bugsCollection, newBug);
+                bugForm.reset();
+            } catch (error) {
+                console.error("Error adding document: ", error);
+            }
+        }
         
     </script>
 
