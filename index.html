@@ -532,12 +532,12 @@
         bugAttachmentInput.addEventListener('change', (e) => showPreview(e.target.files[0], attachmentPreviewContainer));
         commentAttachmentInput.addEventListener('change', (e) => showPreview(e.target.files[0], commentAttachmentPreviewContainer));
 
-        async function uploadToCloudinary(file, transformations = '') {
+        async function uploadToCloudinary(file, transformations = "") {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
             if (transformations) {
-                formData.append('transformation', transformations);
+                formData.append('eager', transformations);
             }
             
             try {
@@ -546,9 +546,13 @@
                     body: formData
                 });
                 const data = await response.json();
-                if (data.secure_url) {
-                    return data.secure_url;
+                
+                if (data.eager && data.eager[0] && data.eager[0].secure_url) {
+                    return data.eager[0].secure_url; // Return the URL of the transformed image
+                } else if (data.secure_url) {
+                    return data.secure_url; // Fallback to the original URL if eager transformation fails
                 } else {
+                    console.error("Cloudinary response error:", data);
                     throw new Error('Cloudinary upload failed');
                 }
             } catch (error) {
