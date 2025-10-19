@@ -126,6 +126,37 @@
             color: #888;
             text-align: right;
         }
+        
+        .vote-button {
+            background-color: #333;
+            border: 2px solid #555;
+            color: white;
+            padding: 4px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .vote-button:hover {
+            background-color: #555;
+            border-color: #777;
+        }
+
+        .vote-button.voted {
+            background-color: #1d4ed8;
+            border-color: #60a5fa;
+        }
+
+        .vote-count {
+            font-size: 24px;
+            text-shadow: 2px 2px 2px #000;
+            min-width: 2rem; /* Keep layout stable */
+            text-align: center;
+        }
+
         /* Markdown formatting styles */
         .markdown-content ul, .markdown-content ol {
             margin-left: 20px;
@@ -286,6 +317,7 @@
                         <select id="sort-bugs" class="gravitas-input" style="font-size: 18px; padding-top: 0.25rem; padding-bottom: 0.25rem;">
                             <option value="newest">Newest First</option>
                             <option value="oldest">Oldest First</option>
+                            <option value="votes">Most Votes</option>
                             <option value="priority_high">Priority (High-Low)</option>
                             <option value="priority_low">Priority (Low-High)</option>
                         </select>
@@ -623,6 +655,7 @@
                 switch (sortValue) {
                     case 'newest': return b.createdAt - a.createdAt;
                     case 'oldest': return a.createdAt - b.createdAt;
+                    case 'votes': return (b.votes || 0) - (a.votes || 0);
                     case 'priority_high': return priorityValues[b.priority] - priorityValues[a.priority];
                     case 'priority_low': return priorityValues[a.priority] - priorityValues[b.priority];
                     default: return 0;
@@ -640,13 +673,29 @@
 
             bugs.forEach(bug => {
                 const bugElement = document.createElement('div');
-                bugElement.className = `ui-panel flex justify-between items-center gap-4 cursor-pointer hover:border-gray-400`;
+                bugElement.className = `ui-panel flex gap-4 items-start hover:border-gray-400`;
                 bugElement.setAttribute('data-bug-id', bug.id);
+
                 const isUserAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
                 const formattedDate = bug.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
                 const reporterInfoHTML = isUserAdmin ? `Reported by ${bug.reporter || 'Anonymous'} on ${formattedDate}` : `Reported on ${formattedDate}`;
                 
-                bugElement.innerHTML = `<div class="flex-grow">
+                const voteCount = bug.votes || 0;
+                const hasVoted = currentUser && bug.voters?.includes(currentUser.email);
+
+                const voteButtonHTML = currentUser ? `
+                    <button class="vote-button ${hasVoted ? 'voted' : ''}" data-bug-id="${bug.id}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 icon-pixelated">
+                            <path d="M9.25 15.25a.75.75 0 01-.75-.75V4.66l-3.22 3.22a.75.75 0 11-1.06-1.06l4.5-4.5a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.06L10 4.66v9.84a.75.75 0 01-.75.75z" />
+                        </svg>
+                    </button>
+                ` : '';
+
+                bugElement.innerHTML = `
+                    <div class="flex flex-col items-center gap-1 pt-2">
+                        ${voteButtonHTML}
+                    </div>
+                    <div class="flex-grow min-w-0">
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
                             <h3 class="font-bold text-white text-shadow-heavy" style="font-size: 24px;">${bug.title}</h3>
                             <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.feature}</span>
@@ -655,9 +704,11 @@
                         <p class="text-slate-300 mb-3 text-shadow-heavy" style="font-size: 20px;">${bug.description}</p>
                         <div class="text-slate-500 text-shadow-heavy" style="font-size: 16px;">${reporterInfoHTML}</div>
                     </div>
-                    <div class="flex flex-shrink-0 items-center gap-3">
-                        ${isUserAdmin ? `<select data-id="${bug.id}" class="status-select gravitas-input" style="font-size: 16px; padding-top: 0; padding-bottom: 0; width: 8rem;"><option ${bug.status === 'Open' ? 'selected' : ''}>Open</option><option ${bug.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${bug.status === 'Resolved' ? 'selected' : ''}>Resolved</option></select>` : ''}
-                        <div class="w-5 h-5 ${statusStyles[bug.status]?.bgColor}"></div>
+                    <div class="flex flex-col items-center gap-1 text-center flex-shrink-0 pt-2">
+                        <div class="vote-count text-white">${voteCount}</div>
+                        <div class="text-slate-400" style="font-size:14px;">Votes</div>
+                        <div class="w-5 h-5 ${statusStyles[bug.status]?.bgColor} mt-2"></div>
+                        ${isUserAdmin ? `<select data-id="${bug.id}" class="status-select gravitas-input mt-2" style="font-size: 16px; padding-top: 0; padding-bottom: 0; width: 8rem;"><option ${bug.status === 'Open' ? 'selected' : ''}>Open</option><option ${bug.status === 'In Progress' ? 'selected' : ''}>In Progress</option><option ${bug.status === 'Resolved' ? 'selected' : ''}>Resolved</option></select>` : ''}
                     </div>`;
                 bugList.appendChild(bugElement);
             });
@@ -682,7 +733,19 @@
                     <button id="cancel-detail-btn" class="gravitas-button !text-base !py-1 !bg-gray-600">Cancel</button>
                 `;
             } else {
+                const voteCount = bug.votes || 0;
+                const hasVoted = currentUser && bug.voters?.includes(currentUser.email);
+                const voteInfoHTML = `
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        ${currentUser ? `<button class="vote-button ${hasVoted ? 'voted' : ''}" data-bug-id="${bug.id}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 icon-pixelated"><path d="M9.25 15.25a.75.75 0 01-.75-.75V4.66l-3.22 3.22a.75.75 0 11-1.06-1.06l4.5-4.5a.75.75 0 011.06 0l4.5 4.5a.75.75 0 01-1.06 1.06L10 4.66v9.84a.75.75 0 01-.75-.75z" /></svg></button>` : ''}
+                        <div class="flex flex-col items-center">
+                            <div class="vote-count text-white">${voteCount}</div>
+                            <div class="text-slate-500" style="font-size:12px;">VOTES</div>
+                        </div>
+                    </div>`;
+
                 detailTitleContainer.innerHTML = `<h2 id="detail-title" class="text-white text-shadow-heavy" style="font-size: 30px;">${bug.title}</h2>`;
+
                 detailDescriptionContainer.innerHTML = `<div id="detail-description" class="markdown-content text-slate-300" style="font-size: 20px;">${marked.parse(bug.description || '')}</div>`;
                 const lockIconSVG = bug.isLocked 
                     ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-red-400 icon-pixelated"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>`
@@ -690,7 +753,7 @@
                 const adminLockHTML = isUserAdmin ? `<button id="lock-detail-btn" data-locked="${bug.isLocked}" class="icon-button">${lockIconSVG}</button>` : bug.isLocked ? lockIconSVG : '';
                 const editButtonHTML = canUserEdit && !isBugLockedForUser ? `<button id="edit-detail-btn" class="icon-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-gray-400 hover:text-white icon-pixelated"><path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" /><path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" /></svg></button>` : '';
                 const deleteButtonHTML = isUserAdmin ? `<button id="delete-detail-btn" class="icon-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-red-500 hover:text-red-400 icon-pixelated"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.023 2.5.067V3.75a1.25 1.25 0 00-1.25-1.25h-2.5A1.25 1.25 0 007.5 3.75v.317c.827-.044 1.66-.067 2.5-.067zM8.25 6.75a.75.75 0 01.75.75v7.5a.75.75 0 01-1.5 0v-7.5a.75.75 0 01.75-.75zm3.5 0a.75.75 0 01.75.75v7.5a.75.75 0 01-1.5 0v-7.5a.75.75 0 01.75-.75z" clip-rule="evenodd" /></svg></button>` : '';
-                detailActionsContainer.innerHTML = `${adminLockHTML} ${editButtonHTML} ${deleteButtonHTML}`;
+                detailActionsContainer.innerHTML = `${voteInfoHTML} ${adminLockHTML} ${editButtonHTML} ${deleteButtonHTML}`;
             }
 
             const formattedDate = bug.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -964,17 +1027,56 @@
             }
         });
 
+        async function handleVote(bugId) {
+            if (!currentUser) return; // Or show login prompt
+
+            const bugRef = doc(db, "bugs", bugId);
+            const bug = allBugs.find(b => b.id === bugId);
+            if (!bug) return;
+
+            const voters = bug.voters || [];
+            const hasVoted = voters.includes(currentUser.email);
+
+            let updatedVoters;
+            if (hasVoted) {
+                updatedVoters = voters.filter(email => email !== currentUser.email);
+            } else {
+                updatedVoters = [...voters, currentUser.email];
+            }
+            
+            const updatedVotes = updatedVoters.length;
+
+            try {
+                await updateDoc(bugRef, {
+                    voters: updatedVoters,
+                    votes: updatedVotes
+                });
+            } catch (error) {
+                console.error("Error updating votes:", error);
+            }
+        }
+
         bugList.addEventListener('click', async (e) => {
             const bugElement = e.target.closest('[data-bug-id]');
             if (!bugElement) return;
 
-            const bugId = bugElement.dataset.bugId;
-            const isInteractive = e.target.closest('button, select, input, a');
+            const voteButton = e.target.closest('.vote-button');
+            const statusSelect = e.target.closest('select.status-select');
 
-            if (isInteractive) return; // Prevent modal opening if clicking a button inside the list item
-
-            openDetailView(bugId);
+            if (voteButton) {
+                handleVote(bugElement.dataset.bugId);
+            } else if (!statusSelect) {
+                openDetailView(bugElement.dataset.bugId);
+            }
         });
+
+        bugDetailModal.addEventListener('click', async (e) => {
+            const voteButton = e.target.closest('.vote-button');
+            if (voteButton) {
+                handleVote(voteButton.dataset.bugId);
+            }
+        });
+
 
         bugList.addEventListener('change', async (e) => {
              if (e.target.classList.contains('status-select')) {
@@ -1024,7 +1126,9 @@
                 createdAt: new Date(),
                 reporter: currentUser.email,
                 isLocked: false,
-                attachments: attachments
+                attachments: attachments,
+                votes: 0,
+                voters: []
             };
 
             try {
