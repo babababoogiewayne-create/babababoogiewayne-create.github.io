@@ -444,6 +444,7 @@
             const qComments = query(commentsRef, orderBy('createdAt', 'asc'));
             unsubscribeComments = onSnapshot(qComments, (snapshot) => {
                 commentList.innerHTML = '';
+                const isUserAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
                 if (snapshot.empty) {
                     commentList.innerHTML = '<p class="text-slate-500 text-lg text-shadow-heavy">No comments yet.</p>';
                     return;
@@ -452,10 +453,11 @@
                     const comment = doc.data();
                     const commentEl = document.createElement('div');
                     const commentDate = comment.createdAt.toDate().toLocaleString();
+                    const authorDisplay = isUserAdmin ? comment.author : 'A Player';
                     commentEl.className = 'ui-panel !p-3 !border-gray-600';
                     commentEl.innerHTML = `
                         <p class="text-lg text-slate-300 text-shadow-heavy">${comment.text}</p>
-                        <p class="text-sm text-slate-500 text-shadow-heavy mt-1">${comment.author} - ${commentDate}</p>
+                        <p class="text-sm text-slate-500 text-shadow-heavy mt-1">${authorDisplay} - ${commentDate}</p>
                     `;
                     commentList.appendChild(commentEl);
                 });
