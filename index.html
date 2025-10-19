@@ -85,12 +85,33 @@
             filter: url(#pixelate);
         }
 
+        .attachment-preview-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
         .attachment-preview {
-            max-width: 150px;
-            max-height: 150px;
+            max-width: 100px;
+            max-height: 100px;
             border: 2px solid #555;
             margin-top: 8px;
             image-rendering: pixelated;
+        }
+        
+        .remove-preview-btn {
+            position: absolute;
+            top: 0;
+            right: -5px;
+            background-color: rgba(200, 0, 0, 0.8);
+            color: white;
+            border: 1px solid white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 14px;
+            line-height: 18px;
+            text-align: center;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -155,9 +176,9 @@
                     </div>
                 </div>
                 <div>
-                    <label for="bug-attachment" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Attach Image (Optional)</label>
-                    <input type="file" id="bug-attachment" class="gravitas-input" accept="image/*">
-                    <div id="attachment-preview-container" style="display: none;"></div>
+                    <label for="bug-attachment" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Attach Images (Up to 5)</label>
+                    <input type="file" id="bug-attachment" class="gravitas-input" accept="image/*" multiple>
+                    <div id="attachment-preview-container" class="flex gap-2 flex-wrap"></div>
                 </div>
                 <button type="submit" class="gravitas-button mt-4">
                     Add Bug
@@ -240,8 +261,8 @@
              <!-- Comment Form -->
             <form id="comment-form" class="mt-4 pt-4 border-t-2 border-gray-700 space-y-2" style="display: none;">
                 <textarea id="comment-input" class="gravitas-input !text-lg" rows="2" placeholder="Add a comment..."></textarea>
-                <input type="file" id="comment-attachment" class="gravitas-input !text-base" accept="image/*">
-                <div id="comment-attachment-preview-container" style="display: none;"></div>
+                <input type="file" id="comment-attachment" class="gravitas-input !text-base" accept="image/*" multiple>
+                <div id="comment-attachment-preview-container" class="flex gap-2 flex-wrap"></div>
                 <button type="submit" class="gravitas-button !text-lg mt-2">Submit Comment</button>
             </form>
         </div>
@@ -303,9 +324,13 @@
 
         let currentUser = null;
         let allBugs = []; // Master list of bugs from Firestore
-        let editingBugId = null; // Track which bug is being edited
-        let activeBugId = null; // Track which bug's details are open
-        let unsubscribeComments = null; // To detach comment listener
+        let editingBugId = null; 
+        let editingCommentId = null;
+        let activeBugId = null; 
+        let unsubscribeComments = null; 
+        
+        let bugAttachmentFiles = [];
+        let commentAttachmentFiles = [];
 
         const statusStyles = {
             'Open': { bgColor: 'bg-yellow-400' },
@@ -364,8 +389,7 @@
         
         function processAndRenderBugs() {
             let processedBugs = [...allBugs];
-            // ... (search, filter, sort logic remains the same)
-             const searchTerm = searchBarEl.value.toLowerCase().trim();
+            const searchTerm = searchBarEl.value.toLowerCase().trim();
             if (searchTerm) {
                 processedBugs = processedBugs.filter(bug =>
                     bug.title.toLowerCase().includes(searchTerm) ||
@@ -414,7 +438,6 @@
                 let bugContentHTML = '';
 
                 if (editingBugId === bug.id) {
-                    // ... (editing view remains the same)
                     bugContentHTML = `
                         <div class="flex-grow space-y-2">
                             <input type="text" value="${bug.title}" class="edit-title-input gravitas-input !text-2xl">
@@ -426,7 +449,6 @@
                         </div>
                     `;
                 } else {
-                    // ... (normal view remains mostly the same, just no top-level click handler)
                     const formattedDate = bug.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
                     const reporterInfoHTML = isUserAdmin ? `Reported by ${bug.reporter || 'Anonymous'} on ${formattedDate}` : `Reported on ${formattedDate}`;
                     const lockIconSVG = bug.isLocked 
@@ -455,28 +477,16 @@
 
             detailTitle.textContent = bug.title;
             detailDescription.textContent = bug.description;
-            detailMeta.innerHTML = `
-                <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.feature}</span> |
-                <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.status}</span> |
-                <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">Priority: ${bug.priority}</span>
-                <br>
-                <span>${reporterInfoHTML}</span>
-            `;
+            detailMeta.innerHTML = `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.feature}</span> | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.status}</span> | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">Priority: ${bug.priority}</span><br><span>${reporterInfoHTML}</span>`;
             
-            // Display attachment
             detailAttachmentContainer.innerHTML = '';
-            if (bug.attachmentURL) {
-                 const parts = bug.attachmentURL.split('/upload/');
-                const transformedUrl = `${parts[0]}/upload/q_auto,f_auto/${parts[1]}`;
-                detailAttachmentContainer.innerHTML = `
-                    <h3 class="text-white text-shadow-heavy" style="font-size: 24px; margin-bottom: 0.5rem;">Attachment</h3>
-                    <img src="${transformedUrl}" class="max-w-full rounded-md border-2 border-gray-600" style="image-rendering: pixelated;" />
-                `;
+            if (bug.attachmentURLs && bug.attachmentURLs.length > 0) {
+                let imagesHTML = bug.attachmentURLs.map(url => `<img src="${url}" class="max-w-full rounded-md border-2 border-gray-600 mb-2" style="image-rendering: pixelated;" />`).join('');
+                detailAttachmentContainer.innerHTML = `<h3 class="text-white text-shadow-heavy" style="font-size: 24px; margin-bottom: 0.5rem;">Attachments</h3>${imagesHTML}`;
             }
 
             bugDetailModal.style.display = 'flex';
             
-            // Listen for comments
             const commentsRef = collection(db, 'bugs', bugId, 'comments');
             const qComments = query(commentsRef, orderBy('createdAt', 'asc'));
             unsubscribeComments = onSnapshot(qComments, (snapshot) => {
@@ -489,29 +499,52 @@
                 snapshot.forEach(doc => {
                     const comment = doc.data();
                     const commentEl = document.createElement('div');
-                    const commentDate = comment.createdAt.toDate().toLocaleString();
-                    const authorDisplay = isUserAdmin ? comment.author : 'A Player';
-                    let attachmentHTML = '';
-                    if (comment.attachmentURL) {
-                        const parts = comment.attachmentURL.split('/upload/');
-                        const transformedUrl = `${parts[0]}/upload/w_200,q_auto:low,f_auto/${parts[1]}`;
-                        attachmentHTML = `<img src="${transformedUrl}" class="max-w-[200px] mt-2 border-2 border-gray-600" style="image-rendering: pixelated;" />`;
-                    }
                     commentEl.className = 'ui-panel !p-3 !border-gray-600';
-                    commentEl.innerHTML = `
-                        <p class="text-lg text-slate-300 text-shadow-heavy">${comment.text}</p>
-                        ${attachmentHTML}
-                        <p class="text-sm text-slate-500 text-shadow-heavy mt-1">${authorDisplay} - ${commentDate}</p>
-                    `;
+                    commentEl.dataset.commentId = doc.id;
+
+                    const canEditOrDelete = currentUser && (currentUser.email === comment.author || isUserAdmin);
+
+                    let contentHTML = '';
+                    if (editingCommentId === doc.id) {
+                        contentHTML = `
+                            <textarea class="edit-comment-input gravitas-input !text-base mb-2" rows="2">${comment.text}</textarea>
+                            <div class="flex gap-2">
+                                <button class="save-comment-btn gravitas-button !text-sm !py-1 flex-grow">Save</button>
+                                <button class="cancel-comment-edit-btn gravitas-button !text-sm !py-1 !bg-gray-600 flex-grow">Cancel</button>
+                            </div>
+                        `;
+                    } else {
+                        const commentDate = comment.createdAt?.toDate().toLocaleString() || '...';
+                        const authorDisplay = isUserAdmin && comment.author ? comment.author : 'A Player';
+                        let attachmentsHTML = '';
+                        if (comment.attachmentURLs && comment.attachmentURLs.length > 0) {
+                            attachmentsHTML = comment.attachmentURLs.map(url => {
+                                const parts = url.split('/upload/');
+                                const transformedUrl = `${parts[0]}/upload/w_200,q_auto:low,f_auto/${parts[1]}`;
+                                return `<img src="${transformedUrl}" class="max-w-[200px] mt-2 border-2 border-gray-600" style="image-rendering: pixelated;" />`;
+                            }).join('');
+                        }
+                        const buttonsHTML = canEditOrDelete && comment.author ? `
+                            <div class="flex gap-2 mt-2">
+                                <button class="edit-comment-btn gravitas-button !text-sm !py-1">Edit</button>
+                                <button class="delete-comment-btn gravitas-button !text-sm !py-1 !bg-red-800">Delete</button>
+                            </div>` : '';
+
+                        contentHTML = `
+                            <p class="text-lg text-slate-300 text-shadow-heavy">${comment.text || ''}</p>
+                            ${attachmentsHTML}
+                            <p class="text-sm text-slate-500 text-shadow-heavy mt-1">${authorDisplay} - ${commentDate}</p>
+                            ${buttonsHTML}
+                        `;
+                    }
+                    commentEl.innerHTML = contentHTML;
                     commentList.appendChild(commentEl);
                 });
             });
         }
 
         function closeDetailView() {
-            if (unsubscribeComments) {
-                unsubscribeComments();
-            }
+            if (unsubscribeComments) unsubscribeComments();
             bugDetailModal.style.display = 'none';
             activeBugId = null;
             commentList.innerHTML = '';
@@ -519,22 +552,51 @@
 
         closeDetailBtn.addEventListener('click', closeDetailView);
         
-        function showPreview(file, container) {
-            if (file) {
+        function updatePreview(files, container, fileStore) {
+            container.innerHTML = '';
+            fileStore.length = 0;
+            const fileList = Array.from(files).slice(0, 5); // Limit to 5 files
+
+            fileList.forEach((file, index) => {
+                fileStore.push(file);
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    container.innerHTML = `<img src="${e.target.result}" class="attachment-preview">`;
-                    container.style.display = 'block';
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'attachment-preview-wrapper';
+                    wrapper.innerHTML = `
+                        <img src="${e.target.result}" class="attachment-preview">
+                        <button type="button" data-index="${index}" class="remove-preview-btn">×</button>
+                    `;
+                    container.appendChild(wrapper);
                 }
                 reader.readAsDataURL(file);
-            } else {
-                container.innerHTML = '';
-                container.style.display = 'none';
-            }
+            });
         }
         
-        bugAttachmentInput.addEventListener('change', (e) => showPreview(e.target.files[0], attachmentPreviewContainer));
-        commentAttachmentInput.addEventListener('change', (e) => showPreview(e.target.files[0], commentAttachmentPreviewContainer));
+        attachmentPreviewContainer.addEventListener('click', e => {
+            if(e.target.classList.contains('remove-preview-btn')) {
+                const index = parseInt(e.target.dataset.index);
+                bugAttachmentFiles.splice(index, 1);
+                const dt = new DataTransfer();
+                bugAttachmentFiles.forEach(file => dt.items.add(file));
+                bugAttachmentInput.files = dt.files;
+                updatePreview(bugAttachmentInput.files, attachmentPreviewContainer, bugAttachmentFiles);
+            }
+        });
+        
+        commentAttachmentPreviewContainer.addEventListener('click', e => {
+            if(e.target.classList.contains('remove-preview-btn')) {
+                const index = parseInt(e.target.dataset.index);
+                commentAttachmentFiles.splice(index, 1);
+                const dt = new DataTransfer();
+                commentAttachmentFiles.forEach(file => dt.items.add(file));
+                commentAttachmentInput.files = dt.files;
+                updatePreview(commentAttachmentInput.files, commentAttachmentPreviewContainer, commentAttachmentFiles);
+            }
+        });
+
+        bugAttachmentInput.addEventListener('change', (e) => updatePreview(e.target.files, attachmentPreviewContainer, bugAttachmentFiles));
+        commentAttachmentInput.addEventListener('change', (e) => updatePreview(e.target.files, commentAttachmentPreviewContainer, commentAttachmentFiles));
 
         async function uploadToCloudinary(file) {
             const formData = new FormData();
@@ -547,12 +609,8 @@
                     body: formData
                 });
                 const data = await response.json();
-                if (data.secure_url) {
-                    return data.secure_url;
-                } else {
-                    console.error("Cloudinary response error:", data);
-                    throw new Error('Cloudinary upload failed');
-                }
+                if (data.secure_url) return data.secure_url;
+                throw new Error('Cloudinary upload failed');
             } catch (error) {
                 console.error("Upload failed:", error);
                 alert("Error: File upload failed.");
@@ -565,20 +623,18 @@
             if (!currentUser || !activeBugId) return;
 
             const commentText = commentInput.value.trim();
-            const attachmentFile = commentAttachmentInput.files[0];
-
-            if (!commentText && !attachmentFile) return;
+            if (!commentText && commentAttachmentFiles.length === 0) return;
 
             const submitButton = e.target.querySelector('button[type="submit"]');
             submitButton.disabled = true;
 
-            let attachmentURL = null;
-            if (attachmentFile) {
-                attachmentURL = await uploadToCloudinary(attachmentFile);
-                if (!attachmentURL) {
-                    submitButton.disabled = false;
-                    return;
-                }
+            const attachmentURLs = await Promise.all(
+                commentAttachmentFiles.map(file => uploadToCloudinary(file))
+            );
+
+            if (attachmentURLs.includes(null)) {
+                submitButton.disabled = false;
+                return;
             }
 
             const commentsRef = collection(db, 'bugs', activeBugId, 'comments');
@@ -586,15 +642,43 @@
                 text: commentText,
                 author: currentUser.email,
                 createdAt: new Date(),
-                attachmentURL: attachmentURL
+                attachmentURLs: attachmentURLs
             });
             
             commentForm.reset();
-            showPreview(null, commentAttachmentPreviewContainer);
+            updatePreview([], commentAttachmentPreviewContainer, commentAttachmentFiles);
             submitButton.disabled = false;
         });
+        
+        commentList.addEventListener('click', async e => {
+            if (e.target.closest('.edit-comment-btn')) {
+                editingCommentId = e.target.closest('[data-comment-id]').dataset.commentId;
+                openDetailView(activeBugId); // Re-render the modal in edit mode
+            }
+            if (e.target.closest('.cancel-comment-edit-btn')) {
+                editingCommentId = null;
+                openDetailView(activeBugId);
+            }
+            if (e.target.closest('.save-comment-btn')) {
+                const commentEl = e.target.closest('[data-comment-id]');
+                const commentId = commentEl.dataset.commentId;
+                const newText = commentEl.querySelector('.edit-comment-input').value;
+                const commentRef = doc(db, 'bugs', activeBugId, 'comments', commentId);
+                await updateDoc(commentRef, { text: newText });
+                editingCommentId = null;
+                openDetailView(activeBugId);
+            }
+            if (e.target.closest('.delete-comment-btn')) {
+                const commentId = e.target.closest('[data-comment-id]').dataset.commentId;
+                const commentRef = doc(db, 'bugs', activeBugId, 'comments', commentId);
+                await updateDoc(commentRef, {
+                    text: '[This message was deleted]',
+                    author: null,
+                    attachmentURLs: []
+                });
+            }
+        });
 
-        // --- EVENT DELEGATION FOR BUG LIST ---
         bugList.addEventListener('click', async (e) => {
             const target = e.target;
             const bugElement = target.closest('[data-bug-id]');
@@ -642,7 +726,6 @@
             }
         });
         
-        // Handle form submission to add a new bug
         bugForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!currentUser) return;
@@ -650,27 +733,26 @@
             const submitButton = e.target.querySelector('button[type="submit"]');
             submitButton.disabled = true;
             uploadProgressEl.style.display = 'block';
-            uploadProgressEl.textContent = 'Preparing bug report...';
+            
+            const attachmentURLs = await Promise.all(
+                bugAttachmentFiles.map(file => {
+                    uploadProgressEl.textContent = `Uploading ${file.name}...`;
+                    return uploadToCloudinary(file);
+                })
+            );
 
-            const attachmentFile = document.getElementById('bug-attachment').files[0];
-            let attachmentURL = null;
-
-            if (attachmentFile) {
-                uploadProgressEl.textContent = 'Uploading attachment...';
-                attachmentURL = await uploadToCloudinary(attachmentFile);
-                if (!attachmentURL) {
-                    submitButton.disabled = false;
-                    uploadProgressEl.style.display = 'none';
-                    return;
-                }
+            if (attachmentURLs.includes(null)) {
+                submitButton.disabled = false;
+                uploadProgressEl.style.display = 'none';
+                return;
             }
             
-            await createBugDocument(attachmentURL);
+            await createBugDocument(attachmentURLs);
             submitButton.disabled = false;
             uploadProgressEl.style.display = 'none';
         });
 
-        async function createBugDocument(attachmentURL) {
+        async function createBugDocument(attachmentURLs) {
             const newBug = {
                 title: document.getElementById('bug-title').value,
                 description: document.getElementById('bug-description').value,
@@ -680,13 +762,13 @@
                 createdAt: new Date(),
                 reporter: currentUser.email,
                 isLocked: false,
-                attachmentURL: attachmentURL
+                attachmentURLs: attachmentURLs
             };
 
             try {
                 await addDoc(bugsCollection, newBug);
                 bugForm.reset();
-                showPreview(null, attachmentPreviewContainer);
+                updatePreview([], attachmentPreviewContainer, bugAttachmentFiles);
             } catch (error) {
                 console.error("Error adding document: ", error);
             }
@@ -696,4 +778,3 @@
 
 </body>
 </html>
-
