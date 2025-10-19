@@ -466,9 +466,11 @@
             // Display attachment
             detailAttachmentContainer.innerHTML = '';
             if (bug.attachmentURL) {
+                 const parts = bug.attachmentURL.split('/upload/');
+                const transformedUrl = `${parts[0]}/upload/q_auto,f_auto/${parts[1]}`;
                 detailAttachmentContainer.innerHTML = `
                     <h3 class="text-white text-shadow-heavy" style="font-size: 24px; margin-bottom: 0.5rem;">Attachment</h3>
-                    <img src="${bug.attachmentURL}" class="max-w-full rounded-md border-2 border-gray-600" style="image-rendering: pixelated;" />
+                    <img src="${transformedUrl}" class="max-w-full rounded-md border-2 border-gray-600" style="image-rendering: pixelated;" />
                 `;
             }
 
@@ -491,7 +493,9 @@
                     const authorDisplay = isUserAdmin ? comment.author : 'A Player';
                     let attachmentHTML = '';
                     if (comment.attachmentURL) {
-                        attachmentHTML = `<img src="${comment.attachmentURL}" class="max-w-[200px] mt-2 border-2 border-gray-600" style="image-rendering: pixelated;" />`;
+                        const parts = comment.attachmentURL.split('/upload/');
+                        const transformedUrl = `${parts[0]}/upload/w_200,q_auto:low,f_auto/${parts[1]}`;
+                        attachmentHTML = `<img src="${transformedUrl}" class="max-w-[200px] mt-2 border-2 border-gray-600" style="image-rendering: pixelated;" />`;
                     }
                     commentEl.className = 'ui-panel !p-3 !border-gray-600';
                     commentEl.innerHTML = `
@@ -532,13 +536,10 @@
         bugAttachmentInput.addEventListener('change', (e) => showPreview(e.target.files[0], attachmentPreviewContainer));
         commentAttachmentInput.addEventListener('change', (e) => showPreview(e.target.files[0], commentAttachmentPreviewContainer));
 
-        async function uploadToCloudinary(file, transformations = "") {
+        async function uploadToCloudinary(file) {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-            if (transformations) {
-                formData.append('eager', transformations);
-            }
             
             try {
                 const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
@@ -546,11 +547,8 @@
                     body: formData
                 });
                 const data = await response.json();
-                
-                if (data.eager && data.eager[0] && data.eager[0].secure_url) {
-                    return data.eager[0].secure_url; // Return the URL of the transformed image
-                } else if (data.secure_url) {
-                    return data.secure_url; // Fallback to the original URL if eager transformation fails
+                if (data.secure_url) {
+                    return data.secure_url;
                 } else {
                     console.error("Cloudinary response error:", data);
                     throw new Error('Cloudinary upload failed');
@@ -569,16 +567,15 @@
             const commentText = commentInput.value.trim();
             const attachmentFile = commentAttachmentInput.files[0];
 
-            if (!commentText && !attachmentFile) return; // Must have text or an image
+            if (!commentText && !attachmentFile) return;
 
             const submitButton = e.target.querySelector('button[type="submit"]');
             submitButton.disabled = true;
 
             let attachmentURL = null;
             if (attachmentFile) {
-                // Super-compression for comment images
-                attachmentURL = await uploadToCloudinary(attachmentFile, 'w_200,q_auto:low,f_auto');
-                if (!attachmentURL) { // Handle upload failure
+                attachmentURL = await uploadToCloudinary(attachmentFile);
+                if (!attachmentURL) {
                     submitButton.disabled = false;
                     return;
                 }
@@ -660,8 +657,7 @@
 
             if (attachmentFile) {
                 uploadProgressEl.textContent = 'Uploading attachment...';
-                // Standard compression for main bug attachments
-                attachmentURL = await uploadToCloudinary(attachmentFile, 'q_auto,f_auto');
+                attachmentURL = await uploadToCloudinary(attachmentFile);
                 if (!attachmentURL) {
                     submitButton.disabled = false;
                     uploadProgressEl.style.display = 'none';
