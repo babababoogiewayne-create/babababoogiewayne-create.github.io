@@ -8,6 +8,8 @@
     <!-- Google Fonts: VT323 --><link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <!-- Chart.js for Dashboard --><script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Marked.js for Markdown Parsing --><script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         /* All CSS from your working file is placed here */
         body {
@@ -121,6 +123,27 @@
             color: #888;
             text-align: right;
         }
+        /* Markdown formatting styles */
+        .markdown-content ul, .markdown-content ol {
+            margin-left: 20px;
+            list-style-position: inside;
+            list-style-type: disc;
+        }
+         .markdown-content ol {
+            list-style-type: decimal;
+        }
+        .markdown-content code {
+             background-color: #111;
+             padding: 2px 5px;
+             border: 1px solid #333;
+        }
+        .markdown-content pre {
+            background-color: #111;
+            padding: 10px;
+            border: 1px solid #333;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
     </style>
 </head>
 <body class="bg-black text-white">
@@ -151,6 +174,35 @@
             </div>
         </header>
 
+         <!-- Dashboard Section -->
+        <div id="dashboard" class="ui-panel mb-8">
+            <h2 class="text-white text-shadow-heavy text-center" style="font-size: 30px; margin-bottom: 1rem;">Project Dashboard</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                <!-- Counters -->
+                <div class="ui-panel !bg-black/20">
+                    <div id="resolved-bugs" class="text-5xl text-green-400 text-shadow-heavy">0</div>
+                    <div class="text-xl text-slate-400">Resolved Bugs</div>
+                </div>
+                 <div class="ui-panel !bg-black/20">
+                    <div id="open-bugs" class="text-5xl text-yellow-400 text-shadow-heavy">0</div>
+                    <div class="text-xl text-slate-400">Open Bugs</div>
+                </div>
+                 <div class="ui-panel !bg-black/20">
+                    <div id="critical-bugs" class="text-5xl text-red-500 text-shadow-heavy">0</div>
+                    <div class="text-xl text-slate-400">Critical Open</div>
+                </div>
+                <!-- Charts -->
+                <div class="md:col-span-1 ui-panel !bg-black/20">
+                     <h3 class="text-xl text-slate-300 mb-2">Bugs by Status</h3>
+                    <canvas id="status-chart"></canvas>
+                </div>
+                <div class="md:col-span-2 ui-panel !bg-black/20">
+                    <h3 class="text-xl text-slate-300 mb-2">Bugs by Feature</h3>
+                    <canvas id="feature-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- Bug Submission Form --><div id="bug-form-container" class="ui-panel mb-8" style="display: none;"> <!-- Hidden by default --><h2 class="text-white text-shadow-heavy" style="font-size: 30px; margin-bottom: 1rem;">Submit a New Bug</h2>
             <form id="bug-form" class="space-y-4">
                 <div>
@@ -159,7 +211,7 @@
                     <div id="bug-title-counter" class="char-counter">0/64</div>
                 </div>
                 <div>
-                    <label for="bug-description" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Description</label>
+                    <label for="bug-description" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Description (Markdown enabled)</label>
                     <textarea id="bug-description" rows="3" required class="gravitas-input" maxlength="16384"></textarea>
                     <div id="bug-description-counter" class="char-counter">0/16384</div>
                 </div>
@@ -256,7 +308,7 @@
             <div class="flex-grow overflow-y-auto space-y-6 pr-2">
                 <!-- Bug Info -->
                 <div class="space-y-2 text-shadow-heavy">
-                    <p id="detail-description" class="text-slate-300" style="font-size: 20px;"></p>
+                    <div id="detail-description" class="markdown-content text-slate-300" style="font-size: 20px;"></div>
                     <div id="detail-meta" class="text-slate-500" style="font-size: 16px;"></div>
                      <!-- Attachment Display -->
                     <div id="detail-attachment-container" class="mt-4"></div>
@@ -270,7 +322,7 @@
             </div>
              <!-- Comment Form -->
             <form id="comment-form" class="mt-4 pt-4 border-t-2 border-gray-700 space-y-2" style="display: none;">
-                <textarea id="comment-input" class="gravitas-input !text-lg" rows="2" placeholder="Add a comment..." maxlength="1024"></textarea>
+                <textarea id="comment-input" class="gravitas-input !text-lg" rows="2" placeholder="Add a comment (Markdown enabled)..." maxlength="1024"></textarea>
                 <div id="comment-input-counter" class="char-counter">0/1024</div>
                 <input type="file" id="comment-attachment" class="gravitas-input !text-base" accept="image/*" multiple>
                 <div id="comment-attachment-preview-container" class="flex gap-2 flex-wrap"></div>
@@ -348,6 +400,9 @@
         let bugAttachmentFiles = [];
         let commentAttachmentFiles = [];
 
+        let statusChart = null;
+        let featureChart = null;
+
         const statusStyles = {
             'Open': { bgColor: 'bg-yellow-400' },
             'In Progress': { bgColor: 'bg-blue-400' },
@@ -404,8 +459,98 @@
                 };
                 allBugs.push(bug);
             });
+            updateDashboard(allBugs);
             processAndRenderBugs();
         });
+        
+        // --- DASHBOARD & ANALYTICS ---
+        function updateDashboard(bugs) {
+            const resolvedBugs = bugs.filter(b => b.status === 'Resolved').length;
+            const openBugs = bugs.filter(b => b.status === 'Open' || b.status === 'In Progress').length;
+            const criticalBugs = bugs.filter(b => b.status !== 'Resolved' && b.priority === 'Critical').length;
+
+            document.getElementById('resolved-bugs').textContent = resolvedBugs;
+            document.getElementById('open-bugs').textContent = openBugs;
+            document.getElementById('critical-bugs').textContent = criticalBugs;
+            
+            // Status Chart Data
+            const statusCounts = bugs.reduce((acc, bug) => {
+                acc[bug.status] = (acc[bug.status] || 0) + 1;
+                return acc;
+            }, {});
+
+            const statusData = {
+                labels: Object.keys(statusCounts),
+                datasets: [{
+                    data: Object.values(statusCounts),
+                    backgroundColor: [
+                        '#FBBF24', // Yellow for Open
+                        '#60A5FA', // Blue for In Progress
+                        '#4ADE80'  // Green for Resolved
+                    ],
+                    borderColor: '#111',
+                }]
+            };
+
+            // Feature Chart Data
+            const featureCounts = bugs.reduce((acc, bug) => {
+                acc[bug.feature] = (acc[bug.feature] || 0) + 1;
+                return acc;
+            }, {});
+
+            const featureData = {
+                labels: Object.keys(featureCounts),
+                datasets: [{
+                    label: '# of Bugs',
+                    data: Object.values(featureCounts),
+                    backgroundColor: '#444',
+                    borderColor: '#888',
+                    borderWidth: 1
+                }]
+            };
+
+            // Update or create charts
+            const statusCtx = document.getElementById('status-chart').getContext('2d');
+            if(statusChart) statusChart.destroy();
+            statusChart = new Chart(statusCtx, {
+                type: 'pie',
+                data: statusData,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            const featureCtx = document.getElementById('feature-chart').getContext('2d');
+            if(featureChart) featureChart.destroy();
+            featureChart = new Chart(featureCtx, {
+                type: 'bar',
+                data: featureData,
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    scales: {
+                        x: {
+                            ticks: { color: '#999', font: { family: "'VT323', monospace", size: 14 } },
+                            grid: { color: '#333' }
+                        },
+                        y: {
+                            ticks: { color: '#999', font: { family: "'VT323', monospace", size: 14 } },
+                            grid: { color: '#333' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                           display: false
+                        }
+                    }
+                }
+            });
+        }
         
         // --- UI LOGIC ---
         filterFeatureEl.addEventListener('change', processAndRenderBugs);
@@ -498,7 +643,7 @@
             const reporterInfoHTML = isUserAdmin ? `Reported by ${bug.reporter || 'Anonymous'} on ${formattedDate}` : `Reported on ${formattedDate}`;
 
             detailTitle.textContent = bug.title;
-            detailDescription.textContent = bug.description;
+            detailDescription.innerHTML = marked.parse(bug.description || '');
             detailMeta.innerHTML = `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.feature}</span> | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.status}</span> | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">Priority: ${bug.priority}</span><br><span>${reporterInfoHTML}</span>`;
             
             detailAttachmentContainer.innerHTML = '';
@@ -556,7 +701,7 @@
                             </div>` : '';
 
                         contentHTML = `
-                            <p class="text-lg text-slate-300 text-shadow-heavy">${comment.text || ''}</p>
+                            <div class="markdown-content text-lg text-slate-300 text-shadow-heavy">${marked.parse(comment.text || '')}</div>
                             ${attachmentsHTML}
                             <p class="text-sm text-slate-500 text-shadow-heavy mt-1">${authorDisplay} - ${commentDate}</p>
                             ${buttonsHTML}
@@ -572,6 +717,7 @@
             if (unsubscribeComments) unsubscribeComments();
             bugDetailModal.style.display = 'none';
             activeBugId = null;
+            editingCommentId = null;
             commentList.innerHTML = '';
         }
 
