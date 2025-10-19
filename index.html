@@ -576,6 +576,9 @@
                 const formData = new FormData();
                 formData.append('file', attachmentFile);
                 formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+                // Add parameters for automatic compression and optimization
+                formData.append('quality', 'auto');
+                formData.append('fetch_format', 'auto');
                 
                 try {
                     const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
