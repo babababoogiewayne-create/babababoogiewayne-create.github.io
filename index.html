@@ -630,21 +630,41 @@
         });
 
         function updateUIForAuthState() {
+            authContainer.innerHTML = ''; // Clear previous buttons
+            myBugsBtnContainer.innerHTML = '';
+
             if (currentUser) {
-                authContainer.innerHTML = `<button id="logout-btn" class="gravitas-button" style="width: auto; font-size: 18px; background-color: #991b1b;">Logout</button>`;
-                myBugsBtnContainer.innerHTML = `<button id="my-bugs-btn" class="gravitas-input !text-lg !py-1 !px-3" style="font-size: 18px; padding-top: 0.25rem; padding-bottom: 0.25rem;">My Bugs</button>`;
-                document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
-                document.getElementById('my-bugs-btn').addEventListener('click', toggleMyBugsView);
-                document.getElementById('logout-btn').onmouseover = (e) => e.target.style.backgroundColor = '#b91c1c';
-                document.getElementById('logout-btn').onmouseout = (e) => e.target.style.backgroundColor = '#991b1b';
+                const logoutBtn = document.createElement('button');
+                logoutBtn.id = 'logout-btn';
+                logoutBtn.className = 'gravitas-button';
+                logoutBtn.textContent = 'Logout';
+                logoutBtn.style.cssText = 'width: auto; font-size: 18px; background-color: #991b1b;';
+                logoutBtn.addEventListener('click', () => signOut(auth));
+                logoutBtn.onmouseover = (e) => e.target.style.backgroundColor = '#b91c1c';
+                logoutBtn.onmouseout = (e) => e.target.style.backgroundColor = '#991b1b';
+                authContainer.appendChild(logoutBtn);
+
+                const myBugsBtn = document.createElement('button');
+                myBugsBtn.id = 'my-bugs-btn';
+                myBugsBtn.className = 'gravitas-input !text-lg !py-1 !px-3';
+                myBugsBtn.textContent = 'My Bugs';
+                myBugsBtn.style.cssText = 'font-size: 18px; padding-top: 0.25rem; padding-bottom: 0.25rem;';
+                myBugsBtn.addEventListener('click', toggleMyBugsView);
+                myBugsBtnContainer.appendChild(myBugsBtn);
+                
                 bugFormContainer.style.display = 'block';
             } else {
-                authContainer.innerHTML = `<button id="login-btn" class="gravitas-button" style="width: auto; font-size: 18px; background-color: #1e40af;">Login</button>`;
-                myBugsBtnContainer.innerHTML = '';
+                const loginBtn = document.createElement('button');
+                loginBtn.id = 'login-btn';
+                loginBtn.className = 'gravitas-button';
+                loginBtn.textContent = 'Login';
+                loginBtn.style.cssText = 'width: auto; font-size: 18px; background-color: #1e40af;';
+                loginBtn.addEventListener('click', () => signInWithPopup(auth, provider));
+                loginBtn.onmouseover = (e) => e.target.style.backgroundColor = '#1d4ed8';
+                loginBtn.onmouseout = (e) => e.target.style.backgroundColor = '#1e40af';
+                authContainer.appendChild(loginBtn);
+                
                 isMyBugsViewActive = false;
-                document.getElementById('login-btn').addEventListener('click', () => signInWithPopup(auth, provider));
-                document.getElementById('login-btn').onmouseover = (e) => e.target.style.backgroundColor = '#1d4ed8';
-                document.getElementById('login-btn').onmouseout = (e) => e.target.style.backgroundColor = '#1e40af';
                 bugFormContainer.style.display = 'none';
             }
             updateMyBugsButtonState();
@@ -721,7 +741,7 @@
 
             // Feature Chart Data (now handles multiple features per bug)
             const featureCounts = bugs.reduce((acc, bug) => {
-                const features = bug.features || (bug.feature ? [bug.feature] : []);
+                const features = bug.features || [];
                 features.forEach(feature => {
                     acc[feature] = (acc[feature] || 0) + 1;
                 });
@@ -830,10 +850,7 @@
             }
             const featureFilter = filterFeatureEl.value;
             if (featureFilter !== 'All Features') {
-                processedBugs = processedBugs.filter(bug => {
-                    const features = bug.features || (bug.feature ? [bug.feature] : []);
-                    return features.includes(featureFilter);
-                });
+                processedBugs = processedBugs.filter(bug => (bug.features || []).includes(featureFilter));
             }
             const sortValue = sortBugsEl.value;
             processedBugs.sort((a, b) => {
@@ -879,7 +896,7 @@
                 const statusDisplay = bug.resolution ? `${bug.status} - ${bug.resolution}` : bug.status;
                 const gameModesHTML = (bug.gameModes || []).map(mode => `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${mode}</span>`).join(' ');
                 
-                const features = bug.features || (bug.feature ? [bug.feature] : []);
+                const features = bug.features || [];
                 const featuresHTML = features.map(feature => `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${feature}</span>`).join(' ');
 
                 const resolutionSelectHTML = bug.status === 'Resolved' && isUserAdmin ? `
@@ -965,7 +982,7 @@
             const reporterInfoHTML = isUserAdmin ? `Reported by ${bug.reporter || 'Anonymous'} on ${formattedDate}` : `Reported on ${formattedDate}`;
             const gameModesText = (bug.gameModes && bug.gameModes.length > 0) ? ` | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.gameModes.join(', ')}</span>` : '';
             
-            const features = bug.features || (bug.feature ? [bug.feature] : []);
+            const features = bug.features || [];
             const featuresText = ` | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${features.join(', ')}</span>`;
 
             detailMeta.innerHTML = `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${statusDisplay}</span>${featuresText}${gameModesText} | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">Priority: ${bug.priority}</span><br><span>${reporterInfoHTML}</span>`;
@@ -1047,7 +1064,13 @@
 
         closeDetailBtn.addEventListener('click', closeDetailView);
         
-        function updatePreview(files, container, fileStore) {
+        function setupAttachmentHandler(inputEl, containerEl, fileStore) {
+            inputEl.addEventListener('change', (e) => updatePreview(e.target.files, containerEl, fileStore, inputEl));
+            containerEl.addEventListener('click', e => handleRemovePreview(e, containerEl, fileStore, inputEl));
+            containerEl.addEventListener('input', e => handleDescriptionInput(e, fileStore));
+        }
+
+        function updatePreview(files, container, fileStore, inputEl) {
             container.innerHTML = '';
             fileStore.length = 0;
             const fileList = Array.from(files).slice(0, 5); // Limit to 5 files
@@ -1067,16 +1090,18 @@
                 }
                 reader.readAsDataURL(file);
             });
+             // We need to update the input's files property if we changed the file list (e.g., by slicing)
+            const dt = new DataTransfer();
+            fileStore.forEach(f => dt.items.add(f.file));
+            inputEl.files = dt.files;
         }
         
         function handleRemovePreview(e, container, fileStore, inputEl) {
              if(e.target.classList.contains('remove-preview-btn')) {
                 const index = parseInt(e.target.dataset.index);
                 fileStore.splice(index, 1);
-                const dt = new DataTransfer();
-                fileStore.forEach(f => dt.items.add(f.file));
-                inputEl.files = dt.files;
-                updatePreview(inputEl.files, container, fileStore);
+                // Re-run updatePreview to re-render the list and update the input's files
+                updatePreview(fileStore.map(f => f.file), container, fileStore, inputEl);
             }
         }
 
@@ -1088,15 +1113,9 @@
                 }
             }
         }
-
-        attachmentPreviewContainer.addEventListener('click', e => handleRemovePreview(e, attachmentPreviewContainer, bugAttachmentFiles, bugAttachmentInput));
-        attachmentPreviewContainer.addEventListener('input', e => handleDescriptionInput(e, bugAttachmentFiles));
         
-        commentAttachmentPreviewContainer.addEventListener('click', e => handleRemovePreview(e, commentAttachmentPreviewContainer, commentAttachmentFiles, commentAttachmentInput));
-        commentAttachmentPreviewContainer.addEventListener('input', e => handleDescriptionInput(e, commentAttachmentFiles));
-
-        bugAttachmentInput.addEventListener('change', (e) => updatePreview(e.target.files, attachmentPreviewContainer, bugAttachmentFiles));
-        commentAttachmentInput.addEventListener('change', (e) => updatePreview(e.target.files, commentAttachmentPreviewContainer, commentAttachmentFiles));
+        setupAttachmentHandler(bugAttachmentInput, attachmentPreviewContainer, bugAttachmentFiles);
+        setupAttachmentHandler(commentAttachmentInput, commentAttachmentPreviewContainer, commentAttachmentFiles);
 
         async function uploadToCloudinary(file) {
             const formData = new FormData();
@@ -1152,7 +1171,7 @@
             });
             
             commentForm.reset();
-            updatePreview([], commentAttachmentPreviewContainer, commentAttachmentFiles);
+            updatePreview([], commentAttachmentPreviewContainer, commentAttachmentFiles, commentAttachmentInput);
             submitButton.disabled = false;
         });
         
@@ -1378,7 +1397,7 @@
                 document.querySelectorAll('#feature-toggles .feature-toggle.active').forEach(toggle => {
                     toggle.classList.remove('active');
                 });
-                updatePreview([], attachmentPreviewContainer, bugAttachmentFiles);
+                updatePreview([], attachmentPreviewContainer, bugAttachmentFiles, bugAttachmentInput);
             } catch (error) {
                 console.error("Error adding document: ", error);
             }
@@ -1589,8 +1608,4 @@
 
 </body>
 </html>
-
-
-
-
 
