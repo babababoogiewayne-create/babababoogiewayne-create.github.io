@@ -185,6 +185,29 @@
         .glow-red-text {
           animation: pulse-red-text 2s infinite;
         }
+        .feature-toggle-group {
+            margin-bottom: 8px;
+        }
+        .feature-toggle-label {
+            font-size: 18px;
+            color: #aaa;
+            margin-bottom: 4px;
+            display: block;
+        }
+        .feature-toggle {
+            background-color: #111;
+            border: 2px solid #333;
+            color: white;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 6px;
+            margin-bottom: 6px;
+        }
+        .feature-toggle.active {
+            background-color: #1d4ed8;
+            border-color: #60a5fa;
+        }
         .mode-toggle.active {
             background-color: #1d4ed8;
             border-color: #60a5fa;
@@ -293,35 +316,39 @@
                         </select>
                     </div>
                     <div>
-                        <label for="bug-feature" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Game Feature</label>
-                        <select id="bug-feature" class="gravitas-input">
-                            <optgroup label="Core Mechanics">
-                                <option>Player Movement</option>
-                                <option>Player Animation</option>
-                                <option>Gravity Fields</option>
-                                <option>Block Interaction</option>
-                                <option>Crafting/Inventory</option>
-                            </optgroup>
-                            <optgroup label="World & Environment">
-                                <option>World Generation</option>
-                                <option>Lighting & Shadows</option>
-                                <option>Physics & Collisions</option>
-                            </optgroup>
-                            <optgroup label="Items & Blocks">
-                                <option>Block(s)</option>
-                                <option>Non-cube block(s)</option>
-                                <option>Tools & Equipment</option>
-                                <option>Logic Block(s)</option>
-                            </optgroup>
-                            <optgroup label="Technical">
-                                <option>Performance/Lag</option>
-                                <option>Crashes</option>
-                                <option>Multiplayer/Netcode</option>
-                                <option>UI/UX</option>
-                                <option>Audio</option>
-                            </optgroup>
-                             <option>Other</option>
-                        </select>
+                        <label for="bug-feature" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Game Feature(s)</label>
+                        <div id="feature-toggles" class="ui-panel !p-2 !bg-black/20">
+                            <div class="feature-toggle-group">
+                                <span class="feature-toggle-label">Core Mechanics</span>
+                                <button type="button" class="feature-toggle" data-feature="Player Movement">Player Movement</button>
+                                <button type="button" class="feature-toggle" data-feature="Player Animation">Player Animation</button>
+                                <button type="button" class="feature-toggle" data-feature="Gravity Fields">Gravity Fields</button>
+                                <button type="button" class="feature-toggle" data-feature="Block Interaction">Block Interaction</button>
+                                <button type="button" class="feature-toggle" data-feature="Crafting/Inventory">Crafting/Inventory</button>
+                            </div>
+                            <div class="feature-toggle-group">
+                                <span class="feature-toggle-label">World & Environment</span>
+                                <button type="button" class="feature-toggle" data-feature="World Generation">World Generation</button>
+                                <button type="button" class="feature-toggle" data-feature="Lighting & Shadows">Lighting & Shadows</button>
+                                <button type="button" class="feature-toggle" data-feature="Physics & Collisions">Physics & Collisions</button>
+                            </div>
+                            <div class="feature-toggle-group">
+                                <span class="feature-toggle-label">Items & Blocks</span>
+                                <button type="button" class="feature-toggle" data-feature="Block(s)">Block(s)</button>
+                                <button type="button" class="feature-toggle" data-feature="Non-cube block(s)">Non-cube block(s)</button>
+                                <button type="button" class="feature-toggle" data-feature="Tools & Equipment">Tools & Equipment</button>
+                                <button type="button" class="feature-toggle" data-feature="Logic Block(s)">Logic Block(s)</button>
+                            </div>
+                             <div class="feature-toggle-group">
+                                <span class="feature-toggle-label">Technical</span>
+                                <button type="button" class="feature-toggle" data-feature="Performance/Lag">Performance/Lag</button>
+                                <button type="button" class="feature-toggle" data-feature="Crashes">Crashes</button>
+                                <button type="button" class="feature-toggle" data-feature="Multiplayer/Netcode">Multiplayer/Netcode</button>
+                                <button type="button" class="feature-toggle" data-feature="UI/UX">UI/UX</button>
+                                <button type="button" class="feature-toggle" data-feature="Audio">Audio</button>
+                            </div>
+                             <button type="button" class="feature-toggle" data-feature="Other">Other</button>
+                        </div>
                     </div>
                 </div>
                 <div>
@@ -498,6 +525,7 @@
         const bugTitleCounter = document.getElementById('bug-title-counter');
         const bugDescriptionCounter = document.getElementById('bug-description-counter');
         const gameModeToggles = document.getElementById('game-mode-toggles');
+        const featureToggles = document.getElementById('feature-toggles');
         
         // Modal DOM Elements
         const bugDetailModal = document.getElementById('bug-detail-modal');
@@ -553,6 +581,12 @@
 
         gameModeToggles.addEventListener('click', (e) => {
             if (e.target.classList.contains('mode-toggle')) {
+                e.target.classList.toggle('active');
+            }
+        });
+
+        featureToggles.addEventListener('click', (e) => {
+            if (e.target.classList.contains('feature-toggle')) {
                 e.target.classList.toggle('active');
             }
         });
@@ -655,9 +689,12 @@
                 }]
             };
 
-            // Feature Chart Data
+            // Feature Chart Data (now handles multiple features per bug)
             const featureCounts = bugs.reduce((acc, bug) => {
-                acc[bug.feature] = (acc[bug.feature] || 0) + 1;
+                const features = bug.features || (bug.feature ? [bug.feature] : []);
+                features.forEach(feature => {
+                    acc[feature] = (acc[feature] || 0) + 1;
+                });
                 return acc;
             }, {});
 
@@ -763,7 +800,10 @@
             }
             const featureFilter = filterFeatureEl.value;
             if (featureFilter !== 'All Features') {
-                processedBugs = processedBugs.filter(bug => bug.feature === featureFilter);
+                processedBugs = processedBugs.filter(bug => {
+                    const features = bug.features || (bug.feature ? [bug.feature] : []);
+                    return features.includes(featureFilter);
+                });
             }
             const sortValue = sortBugsEl.value;
             processedBugs.sort((a, b) => {
@@ -808,6 +848,9 @@
 
                 const statusDisplay = bug.resolution ? `${bug.status} - ${bug.resolution}` : bug.status;
                 const gameModesHTML = (bug.gameModes || []).map(mode => `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${mode}</span>`).join(' ');
+                
+                const features = bug.features || (bug.feature ? [bug.feature] : []);
+                const featuresHTML = features.map(feature => `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${feature}</span>`).join(' ');
 
                 const resolutionSelectHTML = bug.status === 'Resolved' && isUserAdmin ? `
                     <select data-id="${bug.id}" class="resolution-select gravitas-input mt-1" style="font-size: 16px; padding-top: 0; padding-bottom: 0; width: 8rem;">
@@ -824,7 +867,7 @@
                     <div class="flex-grow min-w-0">
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
                             <h3 class="font-bold text-white text-shadow-heavy" style="font-size: 24px;">${bug.title}</h3>
-                            <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.feature}</span>
+                            ${featuresHTML}
                             ${gameModesHTML}
                             <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${statusDisplay}</span>
                         </div>
@@ -891,7 +934,11 @@
             const formattedDate = bug.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
             const reporterInfoHTML = isUserAdmin ? `Reported by ${bug.reporter || 'Anonymous'} on ${formattedDate}` : `Reported on ${formattedDate}`;
             const gameModesText = (bug.gameModes && bug.gameModes.length > 0) ? ` | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.gameModes.join(', ')}</span>` : '';
-            detailMeta.innerHTML = `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${bug.feature}</span> | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${statusDisplay}</span>${gameModesText} | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">Priority: ${bug.priority}</span><br><span>${reporterInfoHTML}</span>`;
+            
+            const features = bug.features || (bug.feature ? [bug.feature] : []);
+            const featuresText = ` | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${features.join(', ')}</span>`;
+
+            detailMeta.innerHTML = `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${statusDisplay}</span>${featuresText}${gameModesText} | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">Priority: ${bug.priority}</span><br><span>${reporterInfoHTML}</span>`;
             
             detailAttachmentContainer.innerHTML = '';
             if (bug.attachments && bug.attachments.length > 0) {
@@ -1269,11 +1316,16 @@
                 selectedModes.push(toggle.dataset.mode);
             });
 
+            const selectedFeatures = [];
+            document.querySelectorAll('#feature-toggles .feature-toggle.active').forEach(toggle => {
+                selectedFeatures.push(toggle.dataset.feature);
+            });
+
             const newBug = {
                 title: document.getElementById('bug-title').value,
                 description: document.getElementById('bug-description').value,
                 priority: document.getElementById('bug-priority').value,
-                feature: document.getElementById('bug-feature').value,
+                features: selectedFeatures, // Changed from 'feature'
                 status: 'Open',
                 createdAt: new Date(),
                 reporter: currentUser.email,
@@ -1291,6 +1343,9 @@
                 document.querySelectorAll('#game-mode-toggles .mode-toggle.active').forEach(toggle => {
                     toggle.classList.remove('active');
                 });
+                document.querySelectorAll('#feature-toggles .feature-toggle.active').forEach(toggle => {
+                    toggle.classList.remove('active');
+                });
                 updatePreview([], attachmentPreviewContainer, bugAttachmentFiles);
             } catch (error) {
                 console.error("Error adding document: ", error);
@@ -1301,5 +1356,7 @@
 
 </body>
 </html>
+
+
 
 
