@@ -313,6 +313,7 @@
                             <option>Medium</option>
                             <option>High</option>
                             <option>Critical</option>
+                            <option>Urgent</option>
                         </select>
                     </div>
                     <div>
@@ -567,7 +568,7 @@
             'Urgent': { bgColor: 'status-urgent' }
         };
 
-        const priorityValues = { 'Low': 0, 'Medium': 1, 'High': 2, 'Critical': 3 };
+        const priorityValues = { 'Low': 0, 'Medium': 1, 'High': 2, 'Critical': 3, 'Urgent': 4 };
         
         // --- CHARACTER COUNTERS ---
         function setupCounter(inputEl, counterEl, maxLength) {
@@ -1321,12 +1322,14 @@
                 selectedFeatures.push(toggle.dataset.feature);
             });
 
+            const priority = document.getElementById('bug-priority').value;
+
             const newBug = {
                 title: document.getElementById('bug-title').value,
                 description: document.getElementById('bug-description').value,
-                priority: document.getElementById('bug-priority').value,
+                priority: priority,
                 features: selectedFeatures, // Changed from 'feature'
-                status: 'Open',
+                status: priority === 'Urgent' ? 'Urgent' : 'Open',
                 createdAt: new Date(),
                 reporter: currentUser.email,
                 isLocked: false,
@@ -1356,7 +1359,4 @@
 
 </body>
 </html>
-
-
-
 
