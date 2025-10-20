@@ -22,6 +22,7 @@
             image-rendering: -webkit-optimize-contrast; /* old Chrome */
             image-rendering: crisp-edges; /* Firefox */
             image-rendering: pixelated; /* modern browsers */
+            overflow-wrap: break-word; /* Prevents text overflow */
         }
 
         .text-shadow-heavy {
@@ -213,7 +214,34 @@
             border-color: #60a5fa;
         }
 
+        .truncate-3-lines {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .truncate-1-line {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Easter Egg Styles */
+        body.physics-active {
+            overflow: hidden; /* Prevent scrollbars */
+        }
+        .physics-object {
+            position: fixed; /* Use fixed to detach from scroll position */
+            transform-origin: center center;
+            will-change: transform;
+            z-index: 100;
+        }
+
         /* Markdown formatting styles */
+        .markdown-content {
+            white-space: pre-wrap; /* Respects newlines in all markdown content */
+        }
         .markdown-content ul, .markdown-content ol {
             margin-left: 20px;
             list-style-position: inside;
@@ -371,7 +399,8 @@
             </form>
         </div>
 
-        <!-- Current Bugs List --><div>
+        <!-- Current Bugs List -->
+        <div id="bug-list-wrapper">
             <!-- Filter and Sort Controls --><div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
                 <div class="flex items-center gap-4">
                     <h2 class="text-white text-shadow-heavy" style="font-size: 36px;">Bugs</h2>
@@ -445,7 +474,7 @@
         <div class="ui-panel w-full max-w-3xl max-h-[90vh] flex flex-col">
             <!-- Modal Header -->
             <div class="flex justify-between items-center mb-4">
-                <div id="detail-title-container" class="flex-grow mr-4">
+                <div id="detail-title-container" class="flex-grow mr-4 min-w-0">
                      <h2 id="detail-title" class="text-white text-shadow-heavy" style="font-size: 30px;"></h2>
                 </div>
                 <div class="flex items-center gap-4 flex-shrink-0">
@@ -867,12 +896,12 @@
                 bugElement.innerHTML = `
                     <div class="flex-grow min-w-0">
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
-                            <h3 class="font-bold text-white text-shadow-heavy" style="font-size: 24px;">${bug.title}</h3>
+                            <h3 class="font-bold text-white text-shadow-heavy truncate-1-line" style="font-size: 24px;">${bug.title}</h3>
                             ${featuresHTML}
                             ${gameModesHTML}
                             <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${statusDisplay}</span>
                         </div>
-                        <p class="text-slate-300 mb-3 text-shadow-heavy" style="font-size: 20px;">${bug.description}</p>
+                        <p class="text-slate-300 mb-3 text-shadow-heavy truncate-3-lines" style="font-size: 20px;">${bug.description}</p>
                         <div class="text-slate-500 text-shadow-heavy" style="font-size: 16px;">${reporterInfoHTML}</div>
                     </div>
                     <div class="flex flex-col items-center gap-2 text-center flex-shrink-0 pt-2">
@@ -1355,8 +1384,213 @@
             }
         }
         
+        // --- EASTER EGG ---
+        let physicsActive = false;
+        let physicsObjects = [];
+        let animationFrameId = null;
+
+        const secretCode = ['6', '7', '6', '7', '6', '7'];
+        let keySequence = [];
+
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            keySequence.push(e.key);
+            keySequence = keySequence.slice(-secretCode.length);
+
+            if (keySequence.join('') === secretCode.join('')) {
+                togglePhysicsEasterEgg();
+                keySequence = [];
+            }
+        });
+
+        function togglePhysicsEasterEgg() {
+            physicsActive = !physicsActive;
+            if (physicsActive) {
+                initPhysics();
+            } else {
+                resetPhysics();
+            }
+        }
+        
+        function isElementInViewport(el) {
+            const rect = el.getBoundingClientRect();
+            const windowHeight = (window.innerHeight || document.documentElement.clientHeight);
+            const windowWidth = (window.innerWidth || document.documentElement.clientWidth);
+
+            if (rect.width <= 0 || rect.height <= 0) {
+                return false;
+            }
+
+            // Calculate the area of the element that is visible
+            const visibleX = Math.max(0, Math.min(rect.right, windowWidth) - Math.max(rect.left, 0));
+            const visibleY = Math.max(0, Math.min(rect.bottom, windowHeight) - Math.max(rect.top, 0));
+            const visibleArea = visibleX * visibleY;
+
+            const totalArea = rect.width * rect.height;
+
+            // Check if at least 75% of the element's area is visible
+            return (visibleArea / totalArea) >= 0.75;
+        }
+
+        function initPhysics() {
+            document.body.classList.add('physics-active');
+            const mainPanels = [
+                document.getElementById('dashboard'),
+                document.getElementById('bug-form-container'),
+                document.querySelector('#bug-list-wrapper > .flex') // The filter/header bar
+            ];
+
+            const elementsToFloat = [];
+            
+            mainPanels.forEach(el => {
+                if (el && el.style.display !== 'none' && isElementInViewport(el)) {
+                    elementsToFloat.push(el);
+                }
+            });
+
+            const bugItems = document.querySelectorAll('#bug-list > .ui-panel');
+            bugItems.forEach(bugEl => {
+                if (isElementInViewport(bugEl)) {
+                    elementsToFloat.push(bugEl);
+                }
+            });
+
+            physicsObjects = [];
+            
+            elementsToFloat.forEach(el => {
+                const rect = el.getBoundingClientRect();
+
+                // Create and insert placeholder
+                const placeholder = document.createElement('div');
+                placeholder.className = 'physics-placeholder';
+                placeholder.style.height = `${rect.height}px`;
+                placeholder.style.marginTop = getComputedStyle(el).marginTop;
+                placeholder.style.marginBottom = getComputedStyle(el).marginBottom;
+                el.parentNode.insertBefore(placeholder, el);
+
+                // Make the element a physics object
+                el.classList.add('physics-object');
+                el.style.left = `${rect.left}px`;
+                el.style.top = `${rect.top}px`;
+                el.style.width = `${rect.width}px`;
+                
+                physicsObjects.push({
+                    el: el,
+                    x: rect.left,
+                    y: rect.top,
+                    vx: Math.random() * 4 - 2,
+                    vy: Math.random() * -5 - 5
+                });
+            });
+
+            if(animationFrameId) cancelAnimationFrame(animationFrameId);
+            updatePhysics();
+        }
+
+        function updatePhysics() {
+            const gravity = 0.2;
+            const bounceFactor = 0.7;
+
+            // 1. Update positions and handle wall collisions first
+            physicsObjects.forEach(obj => {
+                obj.vy += gravity;
+                obj.x += obj.vx;
+                obj.y += obj.vy;
+
+                const rect = { width: obj.el.offsetWidth, height: obj.el.offsetHeight };
+                
+                if (obj.x + rect.width > window.innerWidth || obj.x < 0) {
+                    obj.vx *= -bounceFactor;
+                    obj.x = Math.max(0, Math.min(obj.x, window.innerWidth - rect.width));
+                }
+                if (obj.y + rect.height > window.innerHeight) {
+                     obj.vy *= -bounceFactor;
+                     obj.y = window.innerHeight - rect.height;
+                }
+                 if (obj.y < 0) {
+                    obj.vy *= -bounceFactor;
+                    obj.y = 0;
+                }
+            });
+            
+            // 2. Handle object-to-object collisions
+            for (let i = 0; i < physicsObjects.length; i++) {
+                for (let j = i + 1; j < physicsObjects.length; j++) {
+                    const objA = physicsObjects[i];
+                    const objB = physicsObjects[j];
+                    const rectA = { width: objA.el.offsetWidth, height: objA.el.offsetHeight };
+                    const rectB = { width: objB.el.offsetWidth, height: objB.el.offsetHeight };
+
+                    // Simple AABB collision check
+                    if (objA.x < objB.x + rectB.width &&
+                        objA.x + rectA.width > objB.x &&
+                        objA.y < objB.y + rectB.height &&
+                        objA.y + rectA.height > objB.y) 
+                    {
+                        // Rudimentary collision response
+                        const overlapX = Math.min(objA.x + rectA.width, objB.x + rectB.width) - Math.max(objA.x, objB.x);
+                        const overlapY = Math.min(objA.y + rectA.height, objB.y + rectB.height) - Math.max(objA.y, objB.y);
+
+                        if (overlapX < overlapY) { // Horizontal collision
+                            const tempVx = objA.vx;
+                            objA.vx = objB.vx;
+                            objB.vx = tempVx;
+                            if (objA.x < objB.x) {
+                                objA.x -= overlapX / 2;
+                                objB.x += overlapX / 2;
+                            } else {
+                                objA.x += overlapX / 2;
+                                objB.x -= overlapX / 2;
+                            }
+                        } else { // Vertical collision
+                            const tempVy = objA.vy;
+                            objA.vy = objB.vy;
+                            objB.vy = tempVy;
+                             if (objA.y < objB.y) {
+                                objA.y -= overlapY / 2;
+                                objB.y += overlapY / 2;
+                            } else {
+                                objA.y += overlapY / 2;
+                                objB.y -= overlapY / 2;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 3. Apply final transformations to all elements
+            physicsObjects.forEach(obj => {
+                obj.el.style.transform = `translate(${obj.x - parseFloat(obj.el.style.left)}px, ${obj.y - parseFloat(obj.el.style.top)}px)`;
+            });
+
+
+            animationFrameId = requestAnimationFrame(updatePhysics);
+        }
+
+        function resetPhysics() {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+            document.body.classList.remove('physics-active');
+            
+            document.querySelectorAll('.physics-placeholder').forEach(p => p.remove());
+
+            physicsObjects.forEach(obj => {
+                obj.el.classList.remove('physics-object');
+                obj.el.style.left = '';
+                obj.el.style.top = '';
+                obj.el.style.width = '';
+                obj.el.style.transform = '';
+            });
+            physicsObjects = [];
+        }
+
     </script>
 
 </body>
 </html>
+
+
+
+
 
