@@ -296,6 +296,22 @@
             overflow-x: auto;
             white-space: pre-wrap;
         }
+        
+        /* Activity Timeline Styles */
+        #activity-timeline-btn {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 1010; /* Above main content, below modals */
+        }
+        .activity-item {
+            font-size: 18px;
+        }
+        .activity-event {
+            color: #888;
+            padding: 8px 0;
+            border-bottom: 2px solid #222;
+        }
     </style>
 </head>
 <body class="bg-black text-white">
@@ -509,7 +525,7 @@
             <!-- Modal Header -->
             <div class="flex justify-between items-center mb-4">
                 <div id="detail-title-container" class="flex-grow mr-4 min-w-0">
-                     <h2 id="detail-title" class="text-white text-shadow-heavy" style="font-size: 30px;"></h2>
+                     <div id="detail-title" class="text-white text-shadow-heavy markdown-content" style="font-size: 30px;"></div>
                 </div>
                 <div class="flex items-center gap-4 flex-shrink-0">
                     <div id="detail-actions-container" class="flex items-center gap-2"></div>
@@ -544,10 +560,33 @@
         </div>
     </div>
 
+    <!-- Activity Timeline Button -->
+    <div id="activity-timeline-btn" style="display: none;">
+        <button class="gravitas-button !w-auto !p-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 icon-pixelated">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- Activity Timeline Modal -->
+    <div id="activity-timeline-modal" class="fixed inset-0 bg-black/80 items-center justify-center p-4" style="display: none; z-index: 1050;">
+        <div class="ui-panel w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-white text-shadow-heavy" style="font-size: 30px;">Activity Timeline</h2>
+                <button id="close-timeline-btn" class="text-gray-400 hover:text-white" style="font-size: 36px; line-height: 1;">&times;</button>
+            </div>
+            <div class="flex-grow overflow-y-auto space-y-3 pr-2" id="timeline-list">
+                <!-- Timeline items will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+
     <!-- Firebase SDK --><script type="module">
         // Import the functions you need from the SDKs you need
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, query, updateDoc, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, query, updateDoc, orderBy, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         
         // Your web app's Firebase configuration
@@ -608,6 +647,12 @@
         const commentAttachmentInput = document.getElementById('comment-attachment');
         const commentAttachmentPreviewContainer = document.getElementById('comment-attachment-preview-container');
         const commentInputCounter = document.getElementById('comment-input-counter');
+        
+        // Activity Timeline Elements
+        const activityTimelineBtn = document.getElementById('activity-timeline-btn');
+        const activityTimelineModal = document.getElementById('activity-timeline-modal');
+        const closeTimelineBtn = document.getElementById('close-timeline-btn');
+        const timelineList = document.getElementById('timeline-list');
 
 
         let currentUser = null;
@@ -1012,6 +1057,32 @@
             if (!bug) return;
 
             activeBugId = bugId;
+            isModalEditing = false;
+            renderDetailViewContent(bug);
+
+            bugDetailModal.style.display = 'flex';
+            activityTimelineBtn.style.display = 'block';
+            
+            // Unsubscribe from previous listener if it exists
+            if(unsubscribeComments) unsubscribeComments();
+
+            const commentsRef = collection(db, 'bugs', bugId, 'comments');
+            const qComments = query(commentsRef, orderBy('createdAt', 'asc'));
+
+            unsubscribeComments = onSnapshot(qComments, (snapshot) => {
+                commentList.innerHTML = '';
+                 if (snapshot.empty) {
+                    commentList.innerHTML = '<p class="text-slate-500 text-lg text-shadow-heavy">No comments yet.</p>';
+                }
+                snapshot.forEach(doc => {
+                    const comment = {id: doc.id, ...doc.data()};
+                    const commentEl = renderComment(comment);
+                    commentList.appendChild(commentEl);
+                });
+            });
+        }
+
+        function renderDetailViewContent(bug) {
             const isUserAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
             const canUserEdit = currentUser && (currentUser.email === bug.reporter || isUserAdmin);
             const isBugLockedForUser = bug.isLocked && !isUserAdmin;
@@ -1070,66 +1141,37 @@
                     </div>`).join('');
                 detailAttachmentContainer.innerHTML = `<h3 class="text-white text-shadow-heavy" style="font-size: 24px; margin-bottom: 0.5rem;">Attachments</h3><div class="flex flex-wrap gap-4">${imagesHTML}</div>`;
             }
-
-            bugDetailModal.style.display = 'flex';
-            
-            if(unsubscribeComments) unsubscribeComments();
-            const commentsRef = collection(db, 'bugs', bugId, 'comments');
-            const qComments = query(commentsRef, orderBy('createdAt', 'asc'));
-            unsubscribeComments = onSnapshot(qComments, (snapshot) => {
-                commentList.innerHTML = '';
-                if (snapshot.empty) {
-                    commentList.innerHTML = '<p class="text-slate-500 text-lg text-shadow-heavy">No comments yet.</p>';
-                }
-                snapshot.forEach(doc => {
-                    const comment = doc.data();
-                    const commentEl = document.createElement('div');
-                    commentEl.className = 'ui-panel !p-3 !border-gray-600';
-                    commentEl.dataset.commentId = doc.id;
-
-                    const canEditOrDelete = currentUser && (currentUser.email === comment.author || isUserAdmin);
-                    let contentHTML = '';
-                    if (editingCommentId === doc.id) {
-                         contentHTML = `
-                            <textarea class="edit-comment-input gravitas-input !text-base mb-2" rows="2" maxlength="1024">${comment.text}</textarea>
-                            <div class="flex gap-2">
-                                <button class="save-comment-btn gravitas-button !text-sm !py-1 flex-grow">Save</button>
-                                <button class="cancel-comment-edit-btn gravitas-button !text-sm !py-1 !bg-gray-600 flex-grow">Cancel</button>
-                            </div>
-                        `;
-                    } else {
-                        const commentDate = comment.createdAt?.toDate().toLocaleString() || '...';
-                        const authorDisplay = isUserAdmin && comment.author ? comment.author : 'A Player';
-                        let attachmentsHTML = '';
-                        if (comment.attachments && comment.attachments.length > 0) {
-                             attachmentsHTML = `<div class="flex flex-wrap gap-2 mt-2">${comment.attachments.map(att => `
-                                <div class="text-center">
-                                     <img src="${att.url}" class="max-w-[150px] border-2 border-gray-600" style="image-rendering: pixelated;" />
-                                     <p class="text-xs text-gray-400 text-shadow-heavy">${att.description || ''}</p>
-                                </div>`).join('')}</div>`;
-                        }
-                        const buttonsHTML = canEditOrDelete && comment.author ? `
-                            <div class="flex gap-2 mt-2">
-                                <button class="edit-comment-btn gravitas-button !text-sm !py-1">Edit</button>
-                                <button class="delete-comment-btn gravitas-button !text-sm !py-1 !bg-red-800">Delete</button>
-                            </div>` : '';
-
-                        contentHTML = `
-                            <div class="markdown-content text-lg text-slate-300 text-shadow-heavy">${marked.parse(comment.text || '')}</div>
-                            ${attachmentsHTML}
-                            <p class="text-sm text-slate-500 text-shadow-heavy mt-1">${authorDisplay} - ${commentDate}</p>
-                            ${buttonsHTML}
-                        `;
-                    }
-                    commentEl.innerHTML = contentHTML;
-                    commentList.appendChild(commentEl);
-                });
-            });
         }
+        
+        function renderComment(comment) {
+            const commentEl = document.createElement('div');
+            commentEl.className = 'activity-item ui-panel !p-3 !border-gray-600';
+            const commentDate = comment.createdAt?.toDate().toLocaleString() || '...';
+            const authorDisplay = comment.author === ADMIN_EMAIL ? 'An admin' : comment.author.split('@')[0];
+
+            let attachmentsHTML = '';
+            if (comment.attachments && comment.attachments.length > 0) {
+                attachmentsHTML = `<div class="flex flex-wrap gap-2 mt-2">${comment.attachments.map(att => `
+                    <div class="text-center">
+                         <img src="${att.url}" class="max-w-[150px] border-2 border-gray-600" style="image-rendering: pixelated;" />
+                         <p class="text-xs text-gray-400 text-shadow-heavy">${att.description || ''}</p>
+                    </div>`).join('')}</div>`;
+            }
+            commentEl.innerHTML = `
+                <div class="markdown-content text-lg text-slate-300 text-shadow-heavy">${marked.parse(comment.text || '')}</div>
+                ${attachmentsHTML}
+                <p class="text-sm text-slate-500 text-shadow-heavy mt-1">${authorDisplay} - ${commentDate}</p>
+            `;
+            return commentEl;
+        }
+
 
         function closeDetailView() {
             if (unsubscribeComments) unsubscribeComments();
+            unsubscribeComments = null;
             bugDetailModal.style.display = 'none';
+            activityTimelineBtn.style.display = 'none';
+            activityTimelineModal.style.display = 'none';
             activeBugId = null;
             editingCommentId = null;
             isModalEditing = false;
@@ -1137,6 +1179,13 @@
         }
 
         closeDetailBtn.addEventListener('click', closeDetailView);
+        
+        // Close modal if user clicks on the background overlay
+        bugDetailModal.addEventListener('click', (e) => {
+            if (e.target === bugDetailModal) {
+                closeDetailView();
+            }
+        });
         
         function setupAttachmentHandler(inputEl, containerEl, fileStore) {
             inputEl.addEventListener('change', (e) => updatePreview(e.target.files, containerEl, fileStore, inputEl));
@@ -1249,44 +1298,16 @@
             submitButton.disabled = false;
         });
         
-        commentList.addEventListener('click', async e => {
-            const commentEl = e.target.closest('[data-comment-id]');
-            if (!commentEl) return;
-            const commentId = commentEl.dataset.commentId;
-
-            if (e.target.closest('.edit-comment-btn')) {
-                editingCommentId = commentId;
-                openDetailView(activeBugId); 
-            }
-            if (e.target.closest('.cancel-comment-edit-btn')) {
-                editingCommentId = null;
-                openDetailView(activeBugId);
-            }
-            if (e.target.closest('.save-comment-btn')) {
-                const newText = commentEl.querySelector('.edit-comment-input').value;
-                const commentRef = doc(db, 'bugs', activeBugId, 'comments', commentId);
-                await updateDoc(commentRef, { text: newText });
-                editingCommentId = null;
-                openDetailView(activeBugId);
-            }
-            if (e.target.closest('.delete-comment-btn')) {
-                const commentRef = doc(db, 'bugs', activeBugId, 'comments', commentId);
-                await updateDoc(commentRef, {
-                    text: '[This message was deleted]',
-                    author: null,
-                    attachments: []
-                });
-            }
-        });
-        
         detailActionsContainer.addEventListener('click', async e => {
             if (e.target.closest('#edit-detail-btn')) {
                 isModalEditing = true;
-                openDetailView(activeBugId);
+                const bug = allBugs.find(b => b.id === activeBugId);
+                renderDetailViewContent(bug);
             }
             if (e.target.closest('#cancel-detail-btn')) {
                 isModalEditing = false;
-                openDetailView(activeBugId);
+                const bug = allBugs.find(b => b.id === activeBugId);
+                renderDetailViewContent(bug);
             }
             if (e.target.closest('#save-detail-btn')) {
                 const newTitle = document.getElementById('edit-detail-title').value;
@@ -1294,16 +1315,11 @@
                 try {
                     await updateDoc(doc(db, "bugs", activeBugId), { title: newTitle, description: newDescription });
                     isModalEditing = false;
-                    openDetailView(activeBugId);
+                    const bug = allBugs.find(b => b.id === activeBugId);
+                    renderDetailViewContent(bug);
                 } catch (error) { console.error("PERM ERROR: saving bug", error); }
             }
-            if (e.target.closest('#lock-detail-btn')) {
-                 const bug = allBugs.find(b => b.id === activeBugId);
-                 if (!bug) return;
-                try {
-                    await updateDoc(doc(db, "bugs", activeBugId), { isLocked: !bug.isLocked });
-                } catch (error) { console.error("PERM ERROR: locking bug", error); }
-            }
+            
             if (e.target.closest('#watch-btn')) {
                 handleWatch(activeBugId);
             }
@@ -1331,6 +1347,16 @@
             }
         });
 
+        async function logActivity(bugId, user, text) {
+            if (!bugId) return;
+            const activityRef = collection(db, 'bugs', bugId, 'activity');
+            await addDoc(activityRef, {
+                user: user,
+                text: text,
+                createdAt: new Date()
+            });
+        }
+
         async function handleWatch(bugId) {
             if (!currentUser) return;
 
@@ -1344,12 +1370,16 @@
             let updatedWatchers;
             if (isWatching) {
                 updatedWatchers = watchers.filter(email => email !== currentUser.email);
+                 logActivity(bugId, currentUser.email, `${currentUser.email.split('@')[0]} stopped watching this issue.`);
             } else {
                 updatedWatchers = [...watchers, currentUser.email];
+                 logActivity(bugId, currentUser.email, `${currentUser.email.split('@')[0]} started watching this issue.`);
             }
 
             try {
                 await updateDoc(bugRef, { watchers: updatedWatchers });
+                const updatedBug = { ...bug, watchers: updatedWatchers };
+                renderDetailViewContent(updatedBug);
             } catch (error) {
                 console.error("Error updating watchers:", error);
             }
@@ -1392,15 +1422,19 @@
             const isUserAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
             if (!isUserAdmin) return;
             
+            const bug = allBugs.find(b => b.id === bugId);
+            if(!bug) return;
+            
             if (e.target.classList.contains('status-select')) {
                 const newStatus = e.target.value;
+                const oldStatus = bug.status;
                 const updateData = { status: newStatus };
-                // If moving away from Resolved, clear the resolution
                 if (newStatus !== 'Resolved') {
                     updateData.resolution = null;
                 }
                 try {
                     await updateDoc(doc(db, "bugs", bugId), updateData);
+                    logActivity(bugId, ADMIN_EMAIL, `changed status from <strong>${oldStatus}</strong> to <strong>${newStatus}</strong>.`);
                 } catch (error) { console.error("PERM ERROR: updating status", error); }
             }
             
@@ -1408,6 +1442,7 @@
                 const newResolution = e.target.value;
                  try {
                     await updateDoc(doc(db, "bugs", bugId), { resolution: newResolution });
+                    logActivity(bugId, ADMIN_EMAIL, `set resolution to <strong>${newResolution}</strong>.`);
                 } catch (error) { console.error("PERM ERROR: updating resolution", error); }
             }
         });
@@ -1429,6 +1464,7 @@
                 if (!isUserAdmin) return;
                 try {
                     await updateDoc(doc(db, "bugs", bug.id), { isLocked: !bug.isLocked });
+                    logActivity(bug.id, ADMIN_EMAIL, bug.isLocked ? 'unlocked this issue.' : 'locked this issue.');
                 } catch (error) { console.error("PERM ERROR: locking bug", error); }
             } else if (!isInteractive) {
                 openDetailView(bugElement.dataset.bugId);
@@ -1486,7 +1522,7 @@
                 title: document.getElementById('bug-title').value,
                 description: document.getElementById('bug-description').value,
                 priority: priority,
-                features: selectedFeatures, // Changed from 'feature'
+                features: selectedFeatures,
                 status: priority === 'Urgent' ? 'Urgent' : 'Open',
                 createdAt: new Date(),
                 reporter: currentUser.email,
@@ -1500,7 +1536,7 @@
             };
 
             try {
-                await addDoc(bugsCollection, newBug);
+                const docRef = await addDoc(bugsCollection, newBug);
                 bugForm.reset();
                 document.querySelectorAll('#game-mode-toggles .mode-toggle.active').forEach(toggle => {
                     toggle.classList.remove('active');
@@ -1508,12 +1544,70 @@
                 document.querySelectorAll('#feature-toggles .feature-toggle.active').forEach(toggle => {
                     toggle.classList.remove('active');
                 });
-                updatePreview([], attachmentPreviewContainer, bugAttachmentFiles, bugAttachmentInput);
+                updatePreview([], attachmentPreviewContainer, bugAttachmentInput);
             } catch (error) {
                 console.error("Error adding document: ", error);
             }
         }
         
+        activityTimelineBtn.addEventListener('click', async () => {
+            if (!activeBugId) return;
+            activityTimelineModal.style.display = 'flex';
+            timelineList.innerHTML = '<p class="text-slate-500 text-lg text-shadow-heavy">Loading activity...</p>';
+            
+            const bug = allBugs.find(b => b.id === activeBugId);
+
+            const commentsRef = collection(db, 'bugs', activeBugId, 'comments');
+            const activityRef = collection(db, 'bugs', activeBugId, 'activity');
+
+            const commentsQuery = query(commentsRef, orderBy('createdAt', 'asc'));
+            const activityQuery = query(activityRef, orderBy('createdAt', 'asc'));
+
+            const [commentsSnapshot, activitySnapshot] = await Promise.all([
+                getDocs(commentsQuery),
+                getDocs(activityQuery)
+            ]);
+
+            let combinedActivity = [];
+            commentsSnapshot.forEach(doc => combinedActivity.push({ id: doc.id, type: 'comment', ...doc.data() }));
+            activitySnapshot.forEach(doc => combinedActivity.push({ id: doc.id, type: 'activity', ...doc.data() }));
+            combinedActivity.push({ type: 'activity', createdAt: bug.createdAt, text: `<strong>${bug.reporter.split('@')[0]}</strong> reported this issue.` });
+
+            combinedActivity.sort((a, b) => a.createdAt.toDate() - b.createdAt.toDate());
+            
+            timelineList.innerHTML = '';
+            combinedActivity.forEach(item => {
+                const itemEl = document.createElement('div');
+                const itemDate = item.createdAt?.toDate().toLocaleString() || '...';
+                
+                if (item.type === 'comment') {
+                    itemEl.className = 'activity-item ui-panel !p-3 !border-gray-600';
+                    const authorDisplay = item.author === ADMIN_EMAIL ? 'An admin' : item.author.split('@')[0];
+                    let attachmentsHTML = '';
+                    if (item.attachments && item.attachments.length > 0) {
+                        attachmentsHTML = `<div class="flex flex-wrap gap-2 mt-2">${item.attachments.map(att => `<img src="${att.url}" class="max-w-[100px]" style="image-rendering: pixelated;"/>`).join('')}</div>`;
+                    }
+                    itemEl.innerHTML = `<div class="markdown-content text-lg text-slate-300">${marked.parse(item.text || '')}</div>${attachmentsHTML}<p class="text-sm text-slate-500 mt-1"><strong>${authorDisplay}</strong> commented - ${itemDate}</p>`;
+                } else {
+                    itemEl.className = 'activity-item activity-event';
+                    const userDisplay = item.user === ADMIN_EMAIL ? 'An admin' : (item.user ? item.user.split('@')[0] : '');
+                    itemEl.innerHTML = `<p><strong>${userDisplay}</strong> ${item.text} - <span class="text-sm">${itemDate}</span></p>`;
+                }
+                timelineList.appendChild(itemEl);
+            });
+        });
+        
+        closeTimelineBtn.addEventListener('click', () => {
+             activityTimelineModal.style.display = 'none';
+        });
+
+        activityTimelineModal.addEventListener('click', (e) => {
+            if (e.target === activityTimelineModal) {
+                activityTimelineModal.style.display = 'none';
+            }
+        });
+
+
         // --- EASTER EGG ---
         let physicsActive = false;
         let physicsObjects = [];
@@ -1719,10 +1813,4 @@
 
 </body>
 </html>
-
-
-
-
-
-
 
