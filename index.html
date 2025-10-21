@@ -224,6 +224,11 @@
             border-color: #60a5fa;
         }
 
+        .category-toggle.active {
+            background-color: #1d4ed8;
+            border-color: #60a5fa;
+        }
+
         .truncate-3-lines {
             display: -webkit-box;
             -webkit-line-clamp: 3;
@@ -352,6 +357,24 @@
             transform: rotate(-45deg);
         }
 
+        /* Attachment Gallery Styles */
+        .attachment-thumbnail {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            transition: border-color 0.2s;
+        }
+
+        #lightbox-image {
+            transition: transform 0.1s ease-out; /* For smooth zooming and panning */
+            cursor: zoom-in;
+        }
+        #lightbox-image.is-zoomed {
+            cursor: grab;
+        }
+        #lightbox-modal.is-panning #lightbox-image.is-zoomed {
+            cursor: grabbing;
+        }
     </style>
 </head>
 <body class="bg-black text-white">
@@ -418,7 +441,7 @@
                         <div class="text-xl text-slate-400">Unresolved Bugs</div>
                     </div>
                     <div class="ui-panel !bg-black/20">
-                        <div id="urgent-bugs" class="text-5xl text-red-500 text-shadow-heavy glow-red-text">0</div>
+                        <div id="urgent-bugs" class="text-5xl text-shadow-heavy">0</div>
                         <div class="text-xl text-slate-400">Urgent Bugs</div>
                     </div>
                     <div class="md:col-span-1 ui-panel !bg-black/20">
@@ -587,7 +610,7 @@
 
         <div class="space-y-8">
             <div id="suggestion-form-container" class="ui-panel" style="display: none;">
-                <h2 class="text-white text-shadow-heavy" style="font-size: 30px; margin-bottom: 1rem;">Submit a New Suggestion</h2>
+                <h2 id="suggestion-form-toggle" class="text-white text-shadow-heavy" style="font-size: 30px; margin-bottom: 1rem; cursor: pointer;">Submit a New Suggestion</h2>
                 <form id="suggestion-form" class="space-y-4">
                     <div>
                         <label for="suggestion-title" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Suggestion Title</label>
@@ -600,11 +623,23 @@
                         <div id="suggestion-description-counter" class="char-counter">0/8192</div>
                     </div>
                     <div>
+                        <label class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Category</label>
+                        <div id="suggestion-category-toggles" class="flex flex-wrap gap-2">
+                            <button type="button" class="category-toggle gravitas-input !w-auto !px-4" data-category="New Mechanic">New Mechanic</button>
+                            <button type="button" class="category-toggle gravitas-input !w-auto !px-4" data-category="New Item/Block">New Item/Block</button>
+                            <button type="button" class="category-toggle gravitas-input !w-auto !px-4" data-category="World/Environment">World/Environment</button>
+                            <button type="button" class="category-toggle gravitas-input !w-auto !px-4" data-category="Quality of Life">Quality of Life</button>
+                            <button type="button" class="category-toggle gravitas-input !w-auto !px-4" data-category="Multiplayer">Multiplayer</button>
+                            <button type="button" class="category-toggle gravitas-input !w-auto !px-4" data-category="Other">Other</button>
+                        </div>
+                    </div>
+                    <div>
                         <label for="suggestion-attachment" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Attach Images (Up to 5)</label>
                         <input type="file" id="suggestion-attachment" class="gravitas-input" accept="image/*" multiple>
                         <div id="suggestion-attachment-preview-container" class="flex gap-2 flex-wrap"></div>
                     </div>
                     <button type="submit" class="gravitas-button mt-4">Add Suggestion</button>
+                    <div id="suggestion-upload-progress" class="text-center text-lg text-yellow-400 text-shadow-heavy" style="display: none;"></div>
                 </form>
             </div>
 
@@ -613,6 +648,15 @@
                     <h2 class="text-white text-shadow-heavy" style="font-size: 36px;">Suggestions</h2>
                     <div class="flex items-center gap-4">
                         <input type="text" id="suggestion-search-bar" placeholder="Search..." class="gravitas-input" style="font-size: 18px; padding-top: 0.25rem; padding-bottom: 0.25rem; width: 12rem;">
+                        <select id="suggestion-filter-category" class="gravitas-input" style="font-size: 18px; padding-top: 0.25rem; padding-bottom: 0.25rem;">
+                            <option value="All">All Categories</option>
+                            <option>New Mechanic</option>
+                            <option>New Item/Block</option>
+                            <option>World/Environment</option>
+                            <option>Quality of Life</option>
+                            <option>Multiplayer</option>
+                            <option>Other</option>
+                        </select>
                         <select id="suggestion-sort" class="gravitas-input" style="font-size: 18px; padding-top: 0.25rem; padding-bottom: 0.25rem;">
                             <option value="newest">Newest First</option>
                             <option value="oldest">Oldest First</option>
@@ -628,7 +672,7 @@
     </div>
 
 
-    <!-- Bug Detail Modal --><div id="bug-detail-modal" class="fixed inset-0 bg-black/60 items-center justify-center p-4" style="display: none;">
+    <!-- Bug Detail Modal --><div id="bug-detail-modal" class="fixed inset-0 bg-black/60 items-center justify-center p-4" style="display: none; z-index: 1040;">
         <div class="ui-panel w-full max-w-3xl max-h-[90vh] flex flex-col">
             <!-- Modal Header --><div class="flex justify-between items-center mb-4">
                 <div id="detail-title-container" class="flex-grow mr-4 min-w-0">
@@ -662,6 +706,40 @@
         </div>
     </div>
 
+    <!-- Suggestion Detail Modal --><div id="suggestion-detail-modal" class="fixed inset-0 bg-black/60 items-center justify-center p-4" style="display: none; z-index: 1040;">
+        <div class="ui-panel w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <!-- Modal Header --><div class="flex justify-between items-center mb-4">
+                <div id="suggestion-detail-title-container" class="flex-grow mr-4 min-w-0">
+                     <div id="suggestion-detail-title" class="text-white text-shadow-heavy markdown-content" style="font-size: 30px;"></div>
+                </div>
+                <div class="flex items-center gap-4 flex-shrink-0">
+                    <div id="suggestion-detail-actions-container" class="flex items-center gap-2"></div>
+                    <button id="close-suggestion-detail-btn" class="text-gray-400 hover:text-white" style="font-size: 36px; line-height: 1;">&times;</button>
+                </div>
+            </div>
+
+            <!-- Modal Body --><div class="flex-grow overflow-y-auto space-y-6 pr-2">
+                <!-- Suggestion Info --><div id="suggestion-detail-description-container" class="space-y-2 text-shadow-heavy">
+                    <div id="suggestion-detail-description" class="markdown-content text-slate-300" style="font-size: 20px;"></div>
+                </div>
+                <div id="suggestion-detail-meta" class="text-slate-500" style="font-size: 16px;"></div>
+                 <!-- Attachment Display --><div id="suggestion-detail-attachment-container" class="mt-4"></div>
+                
+                <!-- Comments Section --><div>
+                    <h3 class="text-white text-shadow-heavy" style="font-size: 24px; margin-bottom: 0.5rem;">Comments</h3>
+                    <div id="suggestion-comment-list" class="space-y-3"></div>
+                </div>
+            </div>
+             <!-- Comment Form --><form id="suggestion-comment-form" class="mt-4 pt-4 border-t-2 border-gray-700 space-y-2" style="display: none;">
+                <textarea id="suggestion-comment-input" class="gravitas-input !text-lg" rows="2" placeholder="Add a comment (Markdown enabled)..." maxlength="1024"></textarea>
+                <div id="suggestion-comment-input-counter" class="char-counter">0/1024</div>
+                <input type="file" id="suggestion-comment-attachment" class="gravitas-input !text-base" accept="image/*" multiple>
+                <div id="suggestion-comment-attachment-preview-container" class="flex gap-2 flex-wrap"></div>
+                <button type="submit" class="gravitas-button !text-lg mt-2">Submit Comment</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Activity Timeline Button --><div id="activity-timeline-btn" style="display: none;">
         <button class="gravitas-button !w-auto !p-2">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 icon-pixelated">
@@ -687,6 +765,10 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 19.5v-15m0 0l-6.75 6.75M12 4.5l6.75 6.75" />
             </svg>
         </button>
+    </div>
+
+    <!-- Lightbox Modal for Images --><div id="lightbox-modal" class="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[1060]" style="display: none;">
+        <img id="lightbox-image" src="" class="max-w-full max-h-full object-contain" style="image-rendering: pixelated;"/>
     </div>
 
 
@@ -774,6 +856,7 @@
 
         // Suggestions Elements
         const suggestionFormContainer = document.getElementById('suggestion-form-container');
+        const suggestionFormToggle = document.getElementById('suggestion-form-toggle');
         const suggestionForm = document.getElementById('suggestion-form');
         const suggestionList = document.getElementById('suggestion-list');
         const suggestionTitleInput = document.getElementById('suggestion-title');
@@ -784,6 +867,28 @@
         const suggestionAttachmentPreviewContainer = document.getElementById('suggestion-attachment-preview-container');
         const suggestionSearchBarEl = document.getElementById('suggestion-search-bar');
         const suggestionSortEl = document.getElementById('suggestion-sort');
+        const suggestionUploadProgressEl = document.getElementById('suggestion-upload-progress');
+        const suggestionCategoryToggles = document.getElementById('suggestion-category-toggles');
+        const suggestionFilterCategoryEl = document.getElementById('suggestion-filter-category');
+
+        // Suggestion Modal Elements
+        const suggestionDetailModal = document.getElementById('suggestion-detail-modal');
+        const closeSuggestionDetailBtn = document.getElementById('close-suggestion-detail-btn');
+        const suggestionDetailTitle = document.getElementById('suggestion-detail-title');
+        const suggestionDetailDescription = document.getElementById('suggestion-detail-description');
+        const suggestionDetailMeta = document.getElementById('suggestion-detail-meta');
+        const suggestionDetailActionsContainer = document.getElementById('suggestion-detail-actions-container');
+        const suggestionDetailAttachmentContainer = document.getElementById('suggestion-detail-attachment-container');
+        const suggestionCommentList = document.getElementById('suggestion-comment-list');
+        const suggestionCommentForm = document.getElementById('suggestion-comment-form');
+        const suggestionCommentInput = document.getElementById('suggestion-comment-input');
+        const suggestionCommentInputCounter = document.getElementById('suggestion-comment-input-counter');
+        const suggestionCommentAttachment = document.getElementById('suggestion-comment-attachment');
+        const suggestionCommentAttachmentPreviewContainer = document.getElementById('suggestion-comment-attachment-preview-container');
+
+        // Lightbox Modal Elements
+        const lightboxModal = document.getElementById('lightbox-modal');
+        const lightboxImage = document.getElementById('lightbox-image');
 
 
         let currentUser = null;
@@ -792,17 +897,29 @@
 
         let editingCommentId = null;
         let activeBugId = null; 
+        let activeSuggestionId = null;
         let unsubscribeComments = null; 
+        let unsubscribeSuggestionComments = null;
         let isMyBugsViewActive = false;
         let isModalEditing = false;
         
         let bugAttachmentFiles = [];
         let commentAttachmentFiles = [];
         let suggestionAttachmentFiles = [];
+        let suggestionCommentAttachmentFiles = [];
 
         let statusChart = null;
         let featureChart = null;
         let chartAnimationInterval = null;
+
+        // Lightbox state variables
+        let lightboxZoomLevel = 1;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        const ZOOM_SPEED = 0.1;
 
         const statusStyles = {
             'Open': { bgColor: 'bg-yellow-400' },
@@ -824,6 +941,7 @@
         setupCounter(commentInput, commentInputCounter, 1024);
         setupCounter(suggestionTitleInput, suggestionTitleCounter, 64);
         setupCounter(suggestionDescriptionInput, suggestionDescriptionCounter, 8192);
+        setupCounter(suggestionCommentInput, suggestionCommentInputCounter, 1024);
 
         bugFormToggle.addEventListener('click', () => {
             const container = document.getElementById('bug-form-container');
@@ -835,9 +953,30 @@
             }
         });
 
+        suggestionFormToggle.addEventListener('click', () => {
+            const container = document.getElementById('suggestion-form-container');
+            const isNowCollapsed = container.classList.toggle('form-collapsed');
+            if (isNowCollapsed) {
+                suggestionFormToggle.textContent = 'Submit a New Suggestion +';
+            } else {
+                suggestionFormToggle.textContent = 'Submit a New Suggestion';
+            }
+        });
+
         gameModeToggles.addEventListener('click', (e) => {
             if (e.target.classList.contains('mode-toggle')) {
                 e.target.classList.toggle('active');
+            }
+        });
+
+        suggestionCategoryToggles.addEventListener('click', (e) => {
+            if (e.target.classList.contains('category-toggle')) {
+                // Allow only one category to be active at a time
+                const currentActive = suggestionCategoryToggles.querySelector('.active');
+                if (currentActive) {
+                    currentActive.classList.remove('active');
+                }
+                e.target.classList.add('active');
             }
         });
 
@@ -886,6 +1025,12 @@
                     bugFormContainer.classList.add('form-expanded-once'); // Prevents re-collapsing on auth state changes
                 }
                 suggestionFormContainer.style.display = 'block';
+                if (!suggestionFormContainer.classList.contains('form-expanded-once')) {
+                    suggestionFormContainer.classList.add('form-collapsed');
+                    suggestionFormToggle.textContent = 'Submit a New Suggestion +';
+                    suggestionFormContainer.classList.add('form-expanded-once');
+                }
+
 
             } else {
                 const loginBtn = document.createElement('button');
@@ -903,6 +1048,8 @@
                 bugFormContainer.classList.remove('form-collapsed', 'form-expanded-once');
                 bugFormToggle.textContent = 'Submit a New Bug';
                 suggestionFormContainer.style.display = 'none';
+                suggestionFormContainer.classList.remove('form-collapsed', 'form-expanded-once');
+                suggestionFormToggle.textContent = 'Submit a New Suggestion';
             }
             updateMyBugsButtonState();
         }
@@ -969,7 +1116,15 @@
 
             document.getElementById('resolved-bugs').textContent = resolvedBugs;
             document.getElementById('open-bugs').textContent = unresolvedBugs;
-            document.getElementById('urgent-bugs').textContent = urgentBugs;
+            const urgentBugsEl = document.getElementById('urgent-bugs');
+            urgentBugsEl.textContent = urgentBugs;
+            if (urgentBugs > 0) {
+                urgentBugsEl.classList.add('text-red-500', 'glow-red-text');
+                urgentBugsEl.classList.remove('text-white');
+            } else {
+                urgentBugsEl.classList.remove('text-red-500', 'glow-red-text');
+                urgentBugsEl.classList.add('text-white');
+            }
             
             // Status Chart Data
             const statusCounts = bugs.reduce((acc, bug) => {
@@ -1032,7 +1187,7 @@
             if (chartAnimationInterval) clearInterval(chartAnimationInterval);
             const urgentIndex = statusData.labels.indexOf('Urgent');
 
-            if (urgentIndex !== -1) {
+            if (urgentBugs > 0 && urgentIndex !== -1) {
                 chartAnimationInterval = setInterval(() => {
                     if (!statusChart) return;
                     const time = new Date().getTime() / 400; 
@@ -1210,6 +1365,7 @@
         // --- SUGGESTION RENDERING ---
         suggestionSearchBarEl.addEventListener('input', processAndRenderSuggestions);
         suggestionSortEl.addEventListener('change', processAndRenderSuggestions);
+        suggestionFilterCategoryEl.addEventListener('change', processAndRenderSuggestions);
 
         function processAndRenderSuggestions() {
             let processedSuggestions = [...allSuggestions];
@@ -1220,6 +1376,11 @@
                     s.title.toLowerCase().includes(searchTerm) ||
                     s.description.toLowerCase().includes(searchTerm)
                 );
+            }
+
+            const categoryFilter = suggestionFilterCategoryEl.value;
+            if (categoryFilter !== 'All') {
+                processedSuggestions = processedSuggestions.filter(s => s.category === categoryFilter);
             }
 
             const sortValue = suggestionSortEl.value;
@@ -1255,6 +1416,8 @@
                 const voteCount = suggestion.votes || 0;
                 const hasVoted = currentUser && suggestion.voters?.includes(currentUser.email);
 
+                const categoryHTML = suggestion.category ? `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${suggestion.category}</span>` : '';
+
                 const voteButtonHTML = currentUser ? `
                     <button class="suggestion-vote-button vote-button ${hasVoted ? 'voted' : ''}" data-suggestion-id="${suggestion.id}">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 icon-pixelated"><path d="M10 4l-6 6h4v6h4v-6h4l-6-6z" /></svg>
@@ -1263,7 +1426,10 @@
 
                 suggestionElement.innerHTML = `
                     <div class="flex-grow min-w-0">
-                        <div class="font-bold text-white text-shadow-heavy markdown-content" style="font-size: 24px;">${marked.parse(suggestion.title || '')}</div>
+                        <div class="flex items-center gap-4 mb-2">
+                            <div class="font-bold text-white text-shadow-heavy markdown-content" style="font-size: 24px;">${marked.parse(suggestion.title || '')}</div>
+                            ${categoryHTML}
+                        </div>
                         <div class="text-slate-300 my-2 text-shadow-heavy markdown-content" style="font-size: 20px;">${marked.parse(suggestion.description || '')}</div>
                         <div class="text-slate-500 text-shadow-heavy" style="font-size: 16px;">${reporterInfoHTML}</div>
                     </div>
@@ -1365,8 +1531,8 @@
             detailAttachmentContainer.innerHTML = '';
             if (bug.attachments && bug.attachments.length > 0) {
                 let imagesHTML = bug.attachments.map(att => `
-                    <div class="inline-block text-center mb-2">
-                        <img src="${att.url}" class="max-w-full rounded-md border-2 border-gray-600" style="image-rendering: pixelated;" />
+                    <div class="text-center">
+                        <img src="${att.url}" class="attachment-thumbnail cursor-pointer border-2 border-gray-600 hover:border-blue-400" style="image-rendering: pixelated;" />
                         <p class="text-sm text-gray-400 text-shadow-heavy">${att.description || ''}</p>
                     </div>`).join('');
                 detailAttachmentContainer.innerHTML = `<h3 class="text-white text-shadow-heavy" style="font-size: 24px; margin-bottom: 0.5rem;">Attachments</h3><div class="flex flex-wrap gap-4">${imagesHTML}</div>`;
@@ -1392,7 +1558,7 @@
             if (comment.attachments && comment.attachments.length > 0) {
                 attachmentsHTML = `<div class="flex flex-wrap gap-2 mt-2">${comment.attachments.map(att => `
                     <div class="text-center">
-                         <img src="${att.url}" class="max-w-[150px] border-2 border-gray-600" style="image-rendering: pixelated;" />
+                         <img src="${att.url}" class="attachment-thumbnail cursor-pointer border-2 border-gray-600 hover:border-blue-400" style="image-rendering: pixelated;" />
                          <p class="text-xs text-gray-400 text-shadow-heavy">${att.description || ''}</p>
                     </div>`).join('')}</div>`;
             }
@@ -1423,6 +1589,82 @@
         bugDetailModal.addEventListener('click', (e) => {
             if (e.target === bugDetailModal) {
                 closeDetailView();
+            }
+        });
+
+        // --- SUGGESTION MODAL LOGIC ---
+        function openSuggestionDetailView(suggestionId) {
+            const suggestion = allSuggestions.find(s => s.id === suggestionId);
+            if (!suggestion) return;
+
+            activeSuggestionId = suggestionId;
+            renderSuggestionDetailViewContent(suggestion);
+            suggestionDetailModal.style.display = 'flex';
+            suggestionCommentForm.style.display = currentUser ? 'block' : 'none';
+
+            if(unsubscribeSuggestionComments) unsubscribeSuggestionComments();
+
+            const commentsRef = collection(db, 'suggestions', suggestionId, 'comments');
+            const qComments = query(commentsRef, orderBy('createdAt', 'asc'));
+
+            unsubscribeSuggestionComments = onSnapshot(qComments, (snapshot) => {
+                suggestionCommentList.innerHTML = '';
+                 if (snapshot.empty) {
+                    suggestionCommentList.innerHTML = '<p class="text-slate-500 text-lg text-shadow-heavy">No comments yet.</p>';
+                }
+                snapshot.forEach(doc => {
+                    const comment = {id: doc.id, ...doc.data()};
+                    const commentEl = renderComment(comment); // We can reuse the same render function
+                    suggestionCommentList.appendChild(commentEl);
+                });
+            });
+        }
+
+        function closeSuggestionDetailView() {
+            if (unsubscribeSuggestionComments) unsubscribeSuggestionComments();
+            unsubscribeSuggestionComments = null;
+            suggestionDetailModal.style.display = 'none';
+            activeSuggestionId = null;
+        }
+
+        function renderSuggestionDetailViewContent(suggestion) {
+            const isUserAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
+            
+            const voteCount = suggestion.votes || 0;
+            const hasVoted = currentUser && suggestion.voters?.includes(currentUser.email);
+            const voteInfoHTML = `
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    ${currentUser ? `<button class="suggestion-vote-button vote-button ${hasVoted ? 'voted' : ''}" data-suggestion-id="${suggestion.id}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 icon-pixelated"><path d="M10 4l-6 6h4v6h4v-6h4l-6-6z" /></svg></button>` : ''}
+                    <div class="vote-count text-white">${voteCount}</div>
+                    <div class="text-slate-500" style="font-size:14px;">VOTES</div>
+                </div>`;
+            
+            suggestionDetailActionsContainer.innerHTML = voteInfoHTML;
+            document.getElementById('suggestion-detail-title').innerHTML = marked.parse(suggestion.title || '');
+            document.getElementById('suggestion-detail-description').innerHTML = marked.parse(suggestion.description || '');
+
+            const formattedDate = suggestion.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            const reporterName = suggestion.reporter ? suggestion.reporter.split('@')[0] : 'Anonymous';
+            const reporterInfoHTML = isUserAdmin ? `Suggested by ${reporterName} on ${formattedDate}` : `Suggested on ${formattedDate}`;
+            
+            const categoryHTML = suggestion.category ? ` | <span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${suggestion.category}</span>` : '';
+            suggestionDetailMeta.innerHTML = `<span>${reporterInfoHTML}</span>${categoryHTML}`;
+
+            suggestionDetailAttachmentContainer.innerHTML = '';
+            if (suggestion.attachments && suggestion.attachments.length > 0) {
+                let imagesHTML = suggestion.attachments.map(att => `
+                    <div class="text-center">
+                        <img src="${att.url}" class="attachment-thumbnail cursor-pointer border-2 border-gray-600 hover:border-blue-400" style="image-rendering: pixelated;" />
+                        <p class="text-sm text-gray-400 text-shadow-heavy">${att.description || ''}</p>
+                    </div>`).join('');
+                suggestionDetailAttachmentContainer.innerHTML = `<h3 class="text-white text-shadow-heavy" style="font-size: 24px; margin-bottom: 0.5rem;">Attachments</h3><div class="flex flex-wrap gap-4">${imagesHTML}</div>`;
+            }
+        }
+
+        closeSuggestionDetailBtn.addEventListener('click', closeSuggestionDetailView);
+        suggestionDetailModal.addEventListener('click', (e) => {
+            if (e.target === suggestionDetailModal) {
+                closeSuggestionDetailView();
             }
         });
         
@@ -1479,6 +1721,7 @@
         setupAttachmentHandler(bugAttachmentInput, attachmentPreviewContainer, bugAttachmentFiles);
         setupAttachmentHandler(commentAttachmentInput, commentAttachmentPreviewContainer, commentAttachmentFiles);
         setupAttachmentHandler(suggestionAttachmentInput, suggestionAttachmentPreviewContainer, suggestionAttachmentFiles);
+        setupAttachmentHandler(suggestionCommentAttachment, suggestionCommentAttachmentPreviewContainer, suggestionCommentAttachmentFiles);
 
         async function uploadToCloudinary(file) {
             const formData = new FormData();
@@ -1538,6 +1781,41 @@
             submitButton.disabled = false;
         });
         
+        suggestionCommentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser || !activeSuggestionId) return;
+
+            const commentText = suggestionCommentInput.value.trim();
+            if (!commentText && suggestionCommentAttachmentFiles.length === 0) return;
+
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+
+            const attachments = await Promise.all(
+                suggestionCommentAttachmentFiles.map(async (fileData) => {
+                    const url = await uploadToCloudinary(fileData.file);
+                    return { url, description: fileData.description };
+                })
+            );
+
+            if (attachments.some(att => !att.url)) {
+                submitButton.disabled = false;
+                return;
+            }
+
+            const commentsRef = collection(db, 'suggestions', activeSuggestionId, 'comments');
+            await addDoc(commentsRef, {
+                text: commentText,
+                author: currentUser.email,
+                createdAt: new Date(),
+                attachments: attachments
+            });
+            
+            suggestionCommentForm.reset();
+            updatePreview([], suggestionCommentAttachmentPreviewContainer, suggestionCommentAttachmentFiles, suggestionCommentAttachment);
+            submitButton.disabled = false;
+        });
+
         detailActionsContainer.addEventListener('click', async e => {
             if (e.target.closest('#edit-detail-btn')) {
                 isModalEditing = true;
@@ -1751,6 +2029,25 @@
             const voteButton = e.target.closest('.suggestion-vote-button');
             if (voteButton) {
                 handleSuggestionVote(voteButton.dataset.suggestionId);
+                return; // Prevent modal from opening
+            }
+
+            const suggestionElement = e.target.closest('[data-suggestion-id]');
+            if (suggestionElement) {
+                openSuggestionDetailView(suggestionElement.dataset.suggestionId);
+            }
+        });
+
+        suggestionDetailModal.addEventListener('click', (e) => {
+            const voteButton = e.target.closest('.suggestion-vote-button');
+            if (voteButton) {
+                handleSuggestionVote(voteButton.dataset.suggestionId).then(() => {
+                    // Re-render modal content to reflect vote change
+                    if (activeSuggestionId) {
+                        const suggestion = allSuggestions.find(s => s.id === activeSuggestionId);
+                        if (suggestion) renderSuggestionDetailViewContent(suggestion);
+                    }
+                });
             }
         });
 
@@ -1761,7 +2058,7 @@
             const submitButton = e.target.querySelector('button[type="submit"]');
             submitButton.disabled = true;
             uploadProgressEl.style.display = 'block';
-            
+
             const attachments = await Promise.all(
                 bugAttachmentFiles.map(async (fileData) => {
                     uploadProgressEl.textContent = `Uploading ${fileData.file.name}...`;
@@ -1820,7 +2117,7 @@
                 document.querySelectorAll('#feature-toggles .feature-toggle.active').forEach(toggle => {
                     toggle.classList.remove('active');
                 });
-                updatePreview([], attachmentPreviewContainer, bugAttachmentInput);
+                updatePreview([], attachmentPreviewContainer, bugAttachmentFiles, bugAttachmentInput);
             } catch (error) {
                 console.error("Error adding document: ", error);
             }
@@ -1832,9 +2129,11 @@
 
             const submitButton = e.target.querySelector('button[type="submit"]');
             submitButton.disabled = true;
+            suggestionUploadProgressEl.style.display = 'block';
 
             const attachments = await Promise.all(
                 suggestionAttachmentFiles.map(async (fileData) => {
+                    suggestionUploadProgressEl.textContent = `Uploading ${fileData.file.name}...`;
                     const url = await uploadToCloudinary(fileData.file);
                     return { url, description: fileData.description };
                 })
@@ -1845,11 +2144,15 @@
                 return;
             }
 
+            const activeCategoryToggle = suggestionCategoryToggles.querySelector('.active');
+            const category = activeCategoryToggle ? activeCategoryToggle.dataset.category : 'Other';
+
             const newSuggestion = {
                 title: suggestionTitleInput.value,
                 description: suggestionDescriptionInput.value,
                 reporter: currentUser.email,
                 createdAt: new Date(),
+                category: category,
                 attachments: attachments,
                 votes: 0,
                 voters: [],
@@ -1858,11 +2161,19 @@
             try {
                 await addDoc(suggestionsCollection, newSuggestion);
                 suggestionForm.reset();
+                if (activeCategoryToggle) activeCategoryToggle.classList.remove('active');
                 updatePreview([], suggestionAttachmentPreviewContainer, suggestionAttachmentFiles, suggestionAttachmentInput);
+                // Collapse the form after successful submission
+                const container = document.getElementById('suggestion-form-container');
+                if (!container.classList.contains('form-collapsed')) {
+                    container.classList.add('form-collapsed');
+                    suggestionFormToggle.textContent = 'Submit a New Suggestion +';
+                }
             } catch (error) {
                 console.error("Error adding suggestion: ", error);
             } finally {
                 submitButton.disabled = false;
+                suggestionUploadProgressEl.style.display = 'none';
             }
         });
 
@@ -1919,7 +2230,7 @@
                     }
                     let attachmentsHTML = '';
                     if (item.attachments && item.attachments.length > 0) {
-                        attachmentsHTML = `<div class="flex flex-wrap gap-2 mt-2">${item.attachments.map(att => `<img src="${att.url}" class="max-w-[100px]" style="image-rendering: pixelated;"/>`).join('')}</div>`;
+                        attachmentsHTML = `<div class="flex flex-wrap gap-2 mt-2">${item.attachments.map(att => `<img src="${att.url}" class="attachment-thumbnail cursor-pointer" style="image-rendering: pixelated;"/>`).join('')}</div>`;
                     }
                     itemEl.innerHTML = `<div class="markdown-content text-lg text-slate-300">${marked.parse(item.text || '')}</div>${attachmentsHTML}<p class="text-sm text-slate-500 mt-1"><strong>${authorDisplay}</strong> commented - ${itemDate}</p>`;
                 } else {
@@ -1998,6 +2309,142 @@
             bugTrackerPage.style.display = 'none';
             suggestionsPage.style.display = 'block';
             closeNavPanel();
+        });
+
+        // --- LIGHTBOX LOGIC ---
+        function updateLightboxTransform() {
+            lightboxImage.style.transform = `translate(${panX}px, ${panY}px) scale(${lightboxZoomLevel})`;
+            if (lightboxZoomLevel > 1.01) { // Use a small tolerance for floating point
+                lightboxImage.classList.add('is-zoomed');
+            } else {
+                lightboxImage.classList.remove('is-zoomed');
+            }
+        }
+        
+        function applyLightboxConstraints() {
+            const rect = lightboxImage.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+
+            let constrainedPanX = panX;
+            let constrainedPanY = panY;
+
+            // Constrain X pan
+            if (rect.width <= viewportWidth) {
+                constrainedPanX = 0; // Center if image is smaller than viewport
+            } else {
+                const overpanXLeft = rect.left > 0 ? rect.left : 0;
+                const overpanXRight = rect.right < viewportWidth ? viewportWidth - rect.right : 0;
+                constrainedPanX += overpanXRight - overpanXLeft;
+            }
+
+            // Constrain Y pan
+            if (rect.height <= viewportHeight) {
+                constrainedPanY = 0; // Center if image is smaller than viewport
+            } else {
+                const overpanYTop = rect.top > 0 ? rect.top : 0;
+                const overpanYBottom = rect.bottom < viewportHeight ? viewportHeight - rect.bottom : 0;
+                constrainedPanY += overpanYBottom - overpanYTop;
+            }
+
+            panX = constrainedPanX;
+            panY = constrainedPanY;
+
+            updateLightboxTransform();
+        }
+
+        function openLightbox(src) {
+            const fullQualitySrc = src.replace('/q_auto,f_auto/', '/');
+            lightboxImage.setAttribute('src', fullQualitySrc);
+            lightboxModal.style.display = 'flex';
+            
+            // Reset state on open
+            lightboxZoomLevel = 1;
+            panX = 0;
+            panY = 0;
+            isPanning = false;
+            updateLightboxTransform();
+        }
+
+        function closeLightbox() {
+            lightboxModal.style.display = 'none';
+            lightboxImage.setAttribute('src', ''); // Clear src to stop loading
+        }
+
+        lightboxModal.addEventListener('click', (e) => {
+            // Only close if the click is on the modal backdrop itself and not while panning
+            if (e.target === lightboxModal && !isPanning) {
+                closeLightbox();
+            }
+        });
+
+        lightboxModal.addEventListener('wheel', (e) => {
+            e.preventDefault(); // Prevent page from scrolling
+
+            const rect = lightboxImage.getBoundingClientRect();
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+
+            // The point on the image that the mouse is over, relative to the image's top-left
+            const imagePointX = mouseX - rect.left;
+            const imagePointY = mouseY - rect.top;
+
+            // Determine zoom direction and new zoom level
+            const delta = e.deltaY > 0 ? -ZOOM_SPEED : ZOOM_SPEED;
+            const oldZoomLevel = lightboxZoomLevel;
+            lightboxZoomLevel = Math.max(1, Math.min(lightboxZoomLevel * (1 + delta), 10)); // Min zoom is 1x
+
+            // Calculate the zoom factor
+            const zoomFactor = lightboxZoomLevel / oldZoomLevel;
+
+            // Adjust pan to keep the image point under the mouse
+            panX -= (imagePointX * (zoomFactor - 1));
+            panY -= (imagePointY * (zoomFactor - 1));
+
+            updateLightboxTransform();
+            applyLightboxConstraints(); // Apply constraints after zooming
+        });
+
+        lightboxModal.addEventListener('contextmenu', e => e.preventDefault()); // Prevent right-click menu
+
+        lightboxModal.addEventListener('mousedown', (e) => {
+            if ((e.button === 2 || e.button === 0) && lightboxZoomLevel > 1.01) { // Right or Left mouse button to pan, only if zoomed
+                e.preventDefault();
+                isPanning = true;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                lightboxModal.classList.add('is-panning');
+            }
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                e.preventDefault();
+                const dx = e.clientX - lastMouseX;
+                const dy = e.clientY - lastMouseY;
+
+                panX += dx;
+                panY += dy;
+
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+
+                updateLightboxTransform();
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (isPanning) {
+                isPanning = false;
+                lightboxModal.classList.remove('is-panning');
+                applyLightboxConstraints(); // Snap back to bounds after panning
+            }
+        });
+
+        document.body.addEventListener('click', (e) => {
+            if (e.target.classList.contains('attachment-thumbnail')) {
+                openLightbox(e.target.src);
+            }
         });
 
 
@@ -2206,5 +2653,8 @@
 
 </body>
 </html>
+
+
+
 
 
