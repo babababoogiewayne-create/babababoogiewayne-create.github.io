@@ -243,11 +243,11 @@
         }
 
         /* Collapsible Form Styles */
-        #bug-form-toggle {
+        #bug-form-toggle, #suggestion-form-toggle {
             cursor: pointer;
             transition: margin-bottom 0.3s ease-in-out;
         }
-        #bug-form {
+        #bug-form, #suggestion-form {
             transition: opacity 0.3s ease-in-out, visibility 0s 0.3s, max-height 0.3s ease-in-out, margin-top 0.3s ease-in-out;
             max-height: 2000px; /* Large enough for content */
             overflow: hidden;
@@ -255,13 +255,15 @@
             visibility: visible;
             margin-top: 1rem;
         }
-        #bug-form-container.form-collapsed #bug-form {
+        #bug-form-container.form-collapsed #bug-form,
+        #suggestion-form-container.form-collapsed #suggestion-form {
             max-height: 0;
             opacity: 0;
             visibility: hidden;
             margin-top: 0;
         }
-        #bug-form-container.form-collapsed #bug-form-toggle {
+        #bug-form-container.form-collapsed #bug-form-toggle,
+        #suggestion-form-container.form-collapsed #suggestion-form-toggle {
             text-align: center;
             margin-bottom: 0;
         }
@@ -303,11 +305,11 @@
         }
         
         /* Activity Timeline & Scroll to Top Styles */
-        #activity-timeline-btn {
+        #activity-timeline-btn, #suggestion-activity-timeline-btn {
             position: fixed;
             bottom: 1rem;
             right: 1rem;
-            z-index: 1010; /* Above main content, below modals */
+            z-index: 1045; /* Higher than modal z-index to be clickable */
         }
         #scroll-to-top-btn {
             position: fixed;
@@ -463,7 +465,7 @@
                         <div id="bug-title-counter" class="char-counter">0/64</div>
                     </div>
                     <div>
-                        <label for="bug-description" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Description (Markdown enabled)</label>
+                        <label for="bug-description" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Description</label>
                         <textarea id="bug-description" rows="3" required class="gravitas-input" maxlength="16384"></textarea>
                         <div id="bug-description-counter" class="char-counter">0/16384</div>
                     </div>
@@ -618,7 +620,7 @@
                         <div id="suggestion-title-counter" class="char-counter">0/64</div>
                     </div>
                     <div>
-                        <label for="suggestion-description" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Description (Markdown enabled)</label>
+                        <label for="suggestion-description" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Description</label>
                         <textarea id="suggestion-description" rows="3" required class="gravitas-input" maxlength="8192"></textarea>
                         <div id="suggestion-description-counter" class="char-counter">0/8192</div>
                     </div>
@@ -648,6 +650,14 @@
                     <h2 class="text-white text-shadow-heavy" style="font-size: 36px;">Suggestions</h2>
                     <div class="flex items-center gap-4">
                         <input type="text" id="suggestion-search-bar" placeholder="Search..." class="gravitas-input" style="font-size: 18px; padding-top: 0.25rem; padding-bottom: 0.25rem; width: 12rem;">
+                        <select id="suggestion-filter-status" class="gravitas-input" style="font-size: 18px; padding-top: 0.25rem; padding-bottom: 0.25rem;">
+                            <option value="All">All Statuses</option>
+                            <option>New</option>
+                            <option>Under Review</option>
+                            <option>Planned</option>
+                            <option>Implemented</option>
+                            <option>Not Planned</option>
+                        </select>
                         <select id="suggestion-filter-category" class="gravitas-input" style="font-size: 18px; padding-top: 0.25rem; padding-bottom: 0.25rem;">
                             <option value="All">All Categories</option>
                             <option>New Mechanic</option>
@@ -697,7 +707,7 @@
                 </div>
             </div>
              <!-- Comment Form --><form id="comment-form" class="mt-4 pt-4 border-t-2 border-gray-700 space-y-2" style="display: none;">
-                <textarea id="comment-input" class="gravitas-input !text-lg" rows="2" placeholder="Add a comment (Markdown enabled)..." maxlength="1024"></textarea>
+                <textarea id="comment-input" class="gravitas-input !text-lg" rows="2" placeholder="Add a comment..."></textarea>
                 <div id="comment-input-counter" class="char-counter">0/1024</div>
                 <input type="file" id="comment-attachment" class="gravitas-input !text-base" accept="image/*" multiple>
                 <div id="comment-attachment-preview-container" class="flex gap-2 flex-wrap"></div>
@@ -731,7 +741,7 @@
                 </div>
             </div>
              <!-- Comment Form --><form id="suggestion-comment-form" class="mt-4 pt-4 border-t-2 border-gray-700 space-y-2" style="display: none;">
-                <textarea id="suggestion-comment-input" class="gravitas-input !text-lg" rows="2" placeholder="Add a comment (Markdown enabled)..." maxlength="1024"></textarea>
+                <textarea id="suggestion-comment-input" class="gravitas-input !text-lg" rows="2" placeholder="Add a comment..."></textarea>
                 <div id="suggestion-comment-input-counter" class="char-counter">0/1024</div>
                 <input type="file" id="suggestion-comment-attachment" class="gravitas-input !text-base" accept="image/*" multiple>
                 <div id="suggestion-comment-attachment-preview-container" class="flex gap-2 flex-wrap"></div>
@@ -740,7 +750,14 @@
         </div>
     </div>
 
-    <!-- Activity Timeline Button --><div id="activity-timeline-btn" style="display: none;">
+    <!-- Activity Timeline Buttons --><div id="activity-timeline-btn" style="display: none;">
+        <button class="gravitas-button !w-auto !p-2">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 icon-pixelated">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </button>
+    </div>
+    <div id="suggestion-activity-timeline-btn" style="display: none;">
         <button class="gravitas-button !w-auto !p-2">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 icon-pixelated">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -748,13 +765,23 @@
         </button>
     </div>
 
-    <!-- Activity Timeline Modal --><div id="activity-timeline-modal" class="fixed inset-0 bg-black/80 items-center justify-center p-4" style="display: none; z-index: 1050;">
+    <!-- Activity Timeline Modals --><div id="activity-timeline-modal" class="fixed inset-0 bg-black/80 items-center justify-center p-4" style="display: none; z-index: 1050;">
         <div class="ui-panel w-full max-w-2xl max-h-[80vh] flex flex-col">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-white text-shadow-heavy" style="font-size: 30px;">Activity Timeline</h2>
                 <button id="close-timeline-btn" class="text-gray-400 hover:text-white" style="font-size: 36px; line-height: 1;">&times;</button>
             </div>
             <div class="flex-grow overflow-y-auto space-y-3 pr-2" id="timeline-list">
+                <!-- Timeline items will be inserted here --></div>
+        </div>
+    </div>
+    <div id="suggestion-activity-timeline-modal" class="fixed inset-0 bg-black/80 items-center justify-center p-4" style="display: none; z-index: 1050;">
+        <div class="ui-panel w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-white text-shadow-heavy" style="font-size: 30px;">Suggestion Timeline</h2>
+                <button id="close-suggestion-timeline-btn" class="text-gray-400 hover:text-white" style="font-size: 36px; line-height: 1;">&times;</button>
+            </div>
+            <div class="flex-grow overflow-y-auto space-y-3 pr-2" id="suggestion-timeline-list">
                 <!-- Timeline items will be inserted here --></div>
         </div>
     </div>
@@ -802,12 +829,8 @@
         // DOM Elements
         const bugForm = document.getElementById('bug-form');
         const bugList = document.getElementById('bug-list');
-        const bugFormContainer = document.getElementById('bug-form-container');
-        const filterFeatureEl = document.getElementById('filter-feature');
-        const filterStatusEl = document.getElementById('filter-status');
-        const sortBugsEl = document.getElementById('sort-bugs');
-        const searchBarEl = document.getElementById('search-bar');
         const myBugsBtnContainer = document.getElementById('my-bugs-btn-container');
+        const bugFormContainer = document.getElementById('bug-form-container');
         const uploadProgressEl = document.getElementById('upload-progress');
         const bugAttachmentInput = document.getElementById('bug-attachment');
         const attachmentPreviewContainer = document.getElementById('attachment-preview-container');
@@ -822,9 +845,7 @@
         // Modal DOM Elements
         const bugDetailModal = document.getElementById('bug-detail-modal');
         const closeDetailBtn = document.getElementById('close-detail-btn');
-        const detailTitle = document.getElementById('detail-title');
         const detailTitleContainer = document.getElementById('detail-title-container');
-        const detailDescription = document.getElementById('detail-description');
         const detailDescriptionContainer = document.getElementById('detail-description-container');
         const detailMeta = document.getElementById('detail-meta');
         const detailActionsContainer = document.getElementById('detail-actions-container');
@@ -841,6 +862,10 @@
         const activityTimelineModal = document.getElementById('activity-timeline-modal');
         const closeTimelineBtn = document.getElementById('close-timeline-btn');
         const timelineList = document.getElementById('timeline-list');
+        const suggestionActivityTimelineBtn = document.getElementById('suggestion-activity-timeline-btn');
+        const suggestionActivityTimelineModal = document.getElementById('suggestion-activity-timeline-modal');
+        const closeSuggestionTimelineBtn = document.getElementById('close-suggestion-timeline-btn');
+        const suggestionTimelineList = document.getElementById('suggestion-timeline-list');
         
         // Scroll to Top Element
         const scrollToTopBtn = document.getElementById('scroll-to-top-btn');
@@ -870,12 +895,13 @@
         const suggestionUploadProgressEl = document.getElementById('suggestion-upload-progress');
         const suggestionCategoryToggles = document.getElementById('suggestion-category-toggles');
         const suggestionFilterCategoryEl = document.getElementById('suggestion-filter-category');
+        const suggestionFilterStatusEl = document.getElementById('suggestion-filter-status');
 
         // Suggestion Modal Elements
         const suggestionDetailModal = document.getElementById('suggestion-detail-modal');
         const closeSuggestionDetailBtn = document.getElementById('close-suggestion-detail-btn');
-        const suggestionDetailTitle = document.getElementById('suggestion-detail-title');
-        const suggestionDetailDescription = document.getElementById('suggestion-detail-description');
+        const suggestionDetailTitleContainer = document.getElementById('suggestion-detail-title-container');
+        const suggestionDetailDescriptionContainer = document.getElementById('suggestion-detail-description-container');
         const suggestionDetailMeta = document.getElementById('suggestion-detail-meta');
         const suggestionDetailActionsContainer = document.getElementById('suggestion-detail-actions-container');
         const suggestionDetailAttachmentContainer = document.getElementById('suggestion-detail-attachment-container');
@@ -889,7 +915,6 @@
         // Lightbox Modal Elements
         const lightboxModal = document.getElementById('lightbox-modal');
         const lightboxImage = document.getElementById('lightbox-image');
-
 
         let currentUser = null;
         let allBugs = []; // Master list of bugs from Firestore
@@ -1234,6 +1259,11 @@
         }
         
         // --- UI LOGIC ---
+        const filterFeatureEl = document.getElementById('filter-feature');
+        const filterStatusEl = document.getElementById('filter-status');
+        const sortBugsEl = document.getElementById('sort-bugs');
+        const searchBarEl = document.getElementById('search-bar');
+        
         filterFeatureEl.addEventListener('change', processAndRenderBugs);
         filterStatusEl.addEventListener('change', processAndRenderBugs);
         sortBugsEl.addEventListener('change', processAndRenderBugs);
@@ -1366,6 +1396,7 @@
         suggestionSearchBarEl.addEventListener('input', processAndRenderSuggestions);
         suggestionSortEl.addEventListener('change', processAndRenderSuggestions);
         suggestionFilterCategoryEl.addEventListener('change', processAndRenderSuggestions);
+        suggestionFilterStatusEl.addEventListener('change', processAndRenderSuggestions);
 
         function processAndRenderSuggestions() {
             let processedSuggestions = [...allSuggestions];
@@ -1381,6 +1412,11 @@
             const categoryFilter = suggestionFilterCategoryEl.value;
             if (categoryFilter !== 'All') {
                 processedSuggestions = processedSuggestions.filter(s => s.category === categoryFilter);
+            }
+
+            const statusFilter = suggestionFilterStatusEl.value;
+            if (statusFilter !== 'All') {
+                processedSuggestions = processedSuggestions.filter(s => (s.status || 'New') === statusFilter);
             }
 
             const sortValue = suggestionSortEl.value;
@@ -1417,6 +1453,7 @@
                 const hasVoted = currentUser && suggestion.voters?.includes(currentUser.email);
 
                 const categoryHTML = suggestion.category ? `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${suggestion.category}</span>` : '';
+                const statusHTML = `<span class="text-shadow-heavy bg-black/50 px-2" style="font-size: 18px;">${suggestion.status || 'New'}</span>`;
 
                 const voteButtonHTML = currentUser ? `
                     <button class="suggestion-vote-button vote-button ${hasVoted ? 'voted' : ''}" data-suggestion-id="${suggestion.id}">
@@ -1426,9 +1463,10 @@
 
                 suggestionElement.innerHTML = `
                     <div class="flex-grow min-w-0">
-                        <div class="flex items-center gap-4 mb-2">
+                        <div class="flex items-center gap-4 mb-2 flex-wrap">
                             <div class="font-bold text-white text-shadow-heavy markdown-content" style="font-size: 24px;">${marked.parse(suggestion.title || '')}</div>
                             ${categoryHTML}
+                            ${statusHTML}
                         </div>
                         <div class="text-slate-300 my-2 text-shadow-heavy markdown-content" style="font-size: 20px;">${marked.parse(suggestion.description || '')}</div>
                         <div class="text-slate-500 text-shadow-heavy" style="font-size: 16px;">${reporterInfoHTML}</div>
@@ -1439,6 +1477,15 @@
                             <div class="vote-count text-white">${voteCount}</div>
                         </div>
                         <div class="text-slate-400" style="font-size:14px; margin-top: -0.25rem;">Votes</div>
+                        <div class="admin-controls mt-1">
+                            ${isUserAdmin ? `<select class="suggestion-status-select gravitas-input" style="font-size: 16px; padding-top: 0; padding-bottom: 0; width: 9rem;">
+                                <option ${suggestion.status === 'New' || !suggestion.status ? 'selected' : ''}>New</option>
+                                <option ${suggestion.status === 'Under Review' ? 'selected' : ''}>Under Review</option>
+                                <option ${suggestion.status === 'Planned' ? 'selected' : ''}>Planned</option>
+                                <option ${suggestion.status === 'Implemented' ? 'selected' : ''}>Implemented</option>
+                                <option ${suggestion.status === 'Not Planned' ? 'selected' : ''}>Not Planned</option>
+                            </select>` : ''}
+                        </div>
                     </div>
                 `;
                 suggestionList.appendChild(suggestionElement);
@@ -1600,7 +1647,10 @@
             activeSuggestionId = suggestionId;
             renderSuggestionDetailViewContent(suggestion);
             suggestionDetailModal.style.display = 'flex';
-            suggestionCommentForm.style.display = currentUser ? 'block' : 'none';
+            suggestionActivityTimelineBtn.style.display = 'block';
+            
+            const isSuggestionLocked = suggestion.isLocked && (!currentUser || currentUser.email !== ADMIN_EMAIL);
+            suggestionCommentForm.style.display = currentUser && !isSuggestionLocked ? 'block' : 'none';
 
             if(unsubscribeSuggestionComments) unsubscribeSuggestionComments();
 
@@ -1624,6 +1674,8 @@
             if (unsubscribeSuggestionComments) unsubscribeSuggestionComments();
             unsubscribeSuggestionComments = null;
             suggestionDetailModal.style.display = 'none';
+            suggestionActivityTimelineBtn.style.display = 'none';
+            suggestionActivityTimelineModal.style.display = 'none';
             activeSuggestionId = null;
         }
 
@@ -1639,9 +1691,16 @@
                     <div class="text-slate-500" style="font-size:14px;">VOTES</div>
                 </div>`;
             
-            suggestionDetailActionsContainer.innerHTML = voteInfoHTML;
-            document.getElementById('suggestion-detail-title').innerHTML = marked.parse(suggestion.title || '');
-            document.getElementById('suggestion-detail-description').innerHTML = marked.parse(suggestion.description || '');
+            const lockIconSVG = suggestion.isLocked 
+                ? `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-red-400 icon-pixelated"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>`
+                : `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 text-gray-400 icon-pixelated"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 1 1 9 0v3.75M3.75 21.75h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H3.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>`;
+            const adminLockHTML = isUserAdmin ? `<button class="lock-suggestion-btn icon-button">${lockIconSVG}</button>` : (suggestion.isLocked ? `<div class="icon-button">${lockIconSVG}</div>` : '');
+            const deleteButtonHTML = isUserAdmin ? `<button id="delete-suggestion-btn" class="icon-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-red-500 hover:text-red-400 icon-pixelated"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.023 2.5.067V3.75a1.25 1.25 0 00-1.25-1.25h-2.5A1.25 1.25 0 007.5 3.75v.317c.827-.044 1.66-.067 2.5-.067zM8.25 6.75a.75.75 0 01.75.75v7.5a.75.75 0 01-1.5 0v-7.5a.75.75 0 01.75-.75zm3.5 0a.75.75 0 01.75.75v7.5a.75.75 0 01-1.5 0v-7.5a.75.75 0 01.75-.75z" clip-rule="evenodd" /></svg></button>` : '';
+
+            suggestionDetailActionsContainer.innerHTML = `${voteInfoHTML} ${adminLockHTML} ${deleteButtonHTML}`;
+
+            suggestionDetailTitleContainer.innerHTML = `<div id="suggestion-detail-title" class="text-white text-shadow-heavy markdown-content" style="font-size: 30px;">${marked.parse(suggestion.title || '')}</div>`;
+            suggestionDetailDescriptionContainer.innerHTML = `<div id="suggestion-detail-description" class="markdown-content text-slate-300" style="font-size: 20px;">${marked.parse(suggestion.description || '')}</div>`;
 
             const formattedDate = suggestion.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
             const reporterName = suggestion.reporter ? suggestion.reporter.split('@')[0] : 'Anonymous';
@@ -1875,6 +1934,16 @@
             });
         }
 
+        async function logSuggestionActivity(suggestionId, user, text) {
+            if (!suggestionId) return;
+            const activityRef = collection(db, 'suggestions', suggestionId, 'activity');
+            await addDoc(activityRef, {
+                user: user,
+                text: text,
+                createdAt: new Date()
+            });
+        }
+
         async function handleWatch(bugId) {
             if (!currentUser) return;
 
@@ -2017,6 +2086,25 @@
                 openDetailView(bugElement.dataset.bugId);
             }
         });
+        
+        suggestionList.addEventListener('change', async (e) => {
+            const suggestionElement = e.target.closest('[data-suggestion-id]');
+            if (!suggestionElement) return;
+
+            const suggestionId = suggestionElement.dataset.suggestionId;
+            const isUserAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
+            if (!isUserAdmin) return;
+            
+            if (e.target.classList.contains('suggestion-status-select')) {
+                const suggestion = allSuggestions.find(s => s.id === suggestionId);
+                if (!suggestion) return;
+
+                const newStatus = e.target.value;
+                const oldStatus = suggestion.status || 'New';
+                await updateDoc(doc(db, "suggestions", suggestionId), { status: newStatus });
+                logSuggestionActivity(suggestionId, ADMIN_EMAIL, `changed status from <strong>${oldStatus}</strong> to <strong>${newStatus}</strong>.`);
+            }
+        });
 
         bugDetailModal.addEventListener('click', async (e) => {
             const voteButton = e.target.closest('.vote-button');
@@ -2032,8 +2120,10 @@
                 return; // Prevent modal from opening
             }
 
+            const isInteractive = e.target.closest('select');
             const suggestionElement = e.target.closest('[data-suggestion-id]');
-            if (suggestionElement) {
+            
+            if (suggestionElement && !isInteractive) {
                 openSuggestionDetailView(suggestionElement.dataset.suggestionId);
             }
         });
@@ -2048,6 +2138,37 @@
                         if (suggestion) renderSuggestionDetailViewContent(suggestion);
                     }
                 });
+            }
+
+            const deleteBtn = e.target.closest('#delete-suggestion-btn');
+            if (deleteBtn) {
+                if (deleteBtn.dataset.confirm === 'true') {
+                    logSuggestionActivity(activeSuggestionId, ADMIN_EMAIL, `deleted this suggestion.`);
+                    deleteDoc(doc(db, "suggestions", activeSuggestionId));
+                    closeSuggestionDetailView();
+                } else {
+                    const originalContent = deleteBtn.innerHTML;
+                    deleteBtn.innerHTML = 'Confirm?';
+                    deleteBtn.dataset.confirm = 'true';
+                    deleteBtn.classList.add('!bg-red-800', 'text-white', 'p-1', 'rounded', 'w-24');
+                    setTimeout(() => {
+                        if (deleteBtn.dataset.confirm === 'true') {
+                            deleteBtn.innerHTML = originalContent;
+                            deleteBtn.dataset.confirm = 'false';
+                            deleteBtn.classList.remove('!bg-red-800', 'text-white', 'p-1', 'rounded', 'w-24');
+                        }
+                    }, 3000);
+                }
+            }
+
+            const lockButton = e.target.closest('.lock-suggestion-btn');
+            if (lockButton) {
+                const suggestion = allSuggestions.find(s => s.id === activeSuggestionId);
+                if (!suggestion) return;
+                updateDoc(doc(db, "suggestions", suggestion.id), { isLocked: !suggestion.isLocked });
+                logSuggestionActivity(suggestion.id, ADMIN_EMAIL, suggestion.isLocked ? 'unlocked this suggestion.' : 'locked this suggestion.');
+                // Re-render to show updated lock state
+                renderSuggestionDetailViewContent({ ...suggestion, isLocked: !suggestion.isLocked });
             }
         });
 
@@ -2157,6 +2278,7 @@
                 attachments: attachments,
                 votes: 0,
                 voters: [],
+                isLocked: false,
             };
 
             try {
@@ -2257,6 +2379,88 @@
         activityTimelineModal.addEventListener('click', (e) => {
             if (e.target === activityTimelineModal) {
                 activityTimelineModal.style.display = 'none';
+            }
+        });
+
+        suggestionActivityTimelineBtn.addEventListener('click', async () => {
+            if (!activeSuggestionId) return;
+            suggestionActivityTimelineModal.style.display = 'flex';
+            suggestionTimelineList.innerHTML = '<p class="text-slate-500 text-lg text-shadow-heavy">Loading activity...</p>';
+            
+            const suggestion = allSuggestions.find(s => s.id === activeSuggestionId);
+            const isUserAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
+
+            const commentsRef = collection(db, 'suggestions', activeSuggestionId, 'comments');
+            const activityRef = collection(db, 'suggestions', activeSuggestionId, 'activity');
+
+            const commentsQuery = query(commentsRef, orderBy('createdAt', 'asc'));
+            const activityQuery = query(activityRef, orderBy('createdAt', 'asc'));
+
+            const [commentsSnapshot, activitySnapshot] = await Promise.all([
+                getDocs(commentsQuery),
+                getDocs(activityQuery)
+            ]);
+
+            let combinedActivity = [];
+            commentsSnapshot.forEach(doc => combinedActivity.push({ id: doc.id, type: 'comment', ...doc.data() }));
+            activitySnapshot.forEach(doc => combinedActivity.push({ id: doc.id, type: 'activity', ...doc.data() }));
+            
+            combinedActivity.push({ 
+                type: 'activity', 
+                createdAt: suggestion.createdAt, 
+                user: suggestion.reporter, 
+                text: `created this suggestion.` 
+            });
+
+            combinedActivity.sort((a, b) => {
+                const dateA = a.createdAt.toDate ? a.createdAt.toDate() : a.createdAt;
+                const dateB = b.createdAt.toDate ? b.createdAt.toDate() : b.createdAt;
+                return dateA - dateB;
+            });
+            
+            suggestionTimelineList.innerHTML = '';
+            combinedActivity.forEach(item => {
+                const itemEl = document.createElement('div');
+                const itemDate = (item.createdAt.toDate ? item.createdAt.toDate() : item.createdAt).toLocaleString() || '...';
+                
+                if (item.type === 'comment') {
+                    itemEl.className = 'activity-item ui-panel !p-3 !border-gray-600';
+                    let authorDisplay;
+                    if (item.author === ADMIN_EMAIL) {
+                        authorDisplay = 'An admin';
+                    } else if (isUserAdmin) {
+                        authorDisplay = item.author ? item.author.split('@')[0] : 'A player';
+                    } else {
+                        authorDisplay = 'A player';
+                    }
+                    let attachmentsHTML = '';
+                    if (item.attachments && item.attachments.length > 0) {
+                        attachmentsHTML = `<div class="flex flex-wrap gap-2 mt-2">${item.attachments.map(att => `<img src="${att.url}" class="attachment-thumbnail cursor-pointer" style="image-rendering: pixelated;"/>`).join('')}</div>`;
+                    }
+                    itemEl.innerHTML = `<div class="markdown-content text-lg text-slate-300">${marked.parse(item.text || '')}</div>${attachmentsHTML}<p class="text-sm text-slate-500 mt-1"><strong>${authorDisplay}</strong> commented - ${itemDate}</p>`;
+                } else {
+                    itemEl.className = 'activity-item activity-event';
+                    let userDisplay;
+                    if (item.user === ADMIN_EMAIL) {
+                        userDisplay = 'An admin';
+                    } else if (isUserAdmin) {
+                        userDisplay = item.user ? item.user.split('@')[0] : 'A player';
+                    } else {
+                         userDisplay = 'A player';
+                    }
+                    itemEl.innerHTML = `<p><strong>${userDisplay}</strong> ${item.text} - <span class="text-sm">${itemDate}</span></p>`;
+                }
+                suggestionTimelineList.appendChild(itemEl);
+            });
+        });
+        
+        closeSuggestionTimelineBtn.addEventListener('click', () => {
+             suggestionActivityTimelineModal.style.display = 'none';
+        });
+
+        suggestionActivityTimelineModal.addEventListener('click', (e) => {
+            if (e.target === suggestionActivityTimelineModal) {
+                suggestionActivityTimelineModal.style.display = 'none';
             }
         });
 
@@ -2584,8 +2788,8 @@
                 for (let j = i + 1; j < physicsObjects.length; j++) {
                     const objA = physicsObjects[i];
                     const objB = physicsObjects[j];
-                    const rectA = { width: objA.el.offsetWidth, height: objA.el.offsetHeight };
-                    const rectB = { width: objB.el.offsetWidth, height: objB.el.offsetHeight };
+                    const rectA = { width: objA.el.offsetWidth, height: objA.offsetHeight };
+                    const rectB = { width: objB.el.offsetWidth, height: objB.offsetHeight };
 
                     // Simple AABB collision check
                     if (objA.x < objB.x + rectB.width &&
@@ -2654,4 +2858,5 @@
 
 </body>
 </html>
+
 
