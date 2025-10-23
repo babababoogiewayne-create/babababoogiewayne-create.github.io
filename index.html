@@ -313,7 +313,7 @@
         }
         #scroll-to-top-btn {
             position: fixed;
-            bottom: 5.5rem;
+            bottom: 5.5rem; /* Adjusted to make space for music player */
             right: 1rem;
             z-index: 1010;
         }
@@ -376,6 +376,84 @@
         }
         #lightbox-modal.is-panning #lightbox-image.is-zoomed {
             cursor: grabbing;
+        }
+
+        /* Music Player Styles */
+        #music-player {
+            transition: all 0.3s ease-in-out;
+            overflow: hidden;
+            width: 56px; /* Width of the play/pause icon */
+            min-height: 56px; /* Ensure minimum height matches icon */
+            height: 56px; /* Explicit height for collapsed state */
+            display: flex; /* Enable flexbox */
+            align-items: center; /* Vertically center content */
+        }
+        #music-player:hover {
+             width: 320px; /* Expanded width to accommodate progress bar */
+             height: 88px; /* Slightly taller to fit label + slider + progress */
+        }
+        #music-player label, #current-song-title { /* Apply font to title span */
+             font-family: 'VT323', monospace; /* Ensure correct font */
+        }
+        #music-player .controls-wrapper {
+             opacity: 0;
+             transition: opacity 0.3s ease-in-out 0.1s; /* Delay opacity transition */
+             pointer-events: none; /* Prevent interaction when hidden */
+        }
+         #music-player:hover .controls-wrapper {
+             opacity: 1;
+             pointer-events: auto;
+         }
+        input[type=range] {
+            -webkit-appearance: none; /* Override default look */
+            appearance: none;
+            width: 100%; /* Full-width */
+            height: 8px; /* Specified height */
+            background: #222; /* Dark track */
+            outline: none; /* Remove outline */
+            border: 2px solid #555; /* Add border */
+            cursor: pointer;
+        }
+        /* Thumb: Chrome, Edge, Safari */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; /* Override default look */
+            appearance: none;
+            width: 16px; /* Square thumb */
+            height: 16px; /* Square thumb */
+            background: #888; /* Grey thumb */
+            border: 2px solid #ccc; /* Lighter border */
+            cursor: pointer;
+        }
+        /* Thumb: Firefox */
+        input[type=range]::-moz-range-thumb {
+            width: 12px; /* Square thumb */
+            height: 12px; /* Square thumb */
+            background: #888; /* Grey thumb */
+            border: 2px solid #ccc; /* Lighter border */
+            cursor: pointer;
+            border-radius: 0; /* Make it square */
+        }
+         /* Track: Firefox */
+        input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #222;
+            border: 2px solid #555;
+        }
+        #progress-bar-container {
+            width: 100%;
+            height: 10px;
+            background-color: #111;
+            border: 2px solid #333;
+            cursor: pointer;
+            margin-top: 4px;
+        }
+        #progress-bar-fill {
+            height: 100%;
+            background-color: #60a5fa; /* Blue color for progress */
+            width: 0%; /* Start at 0 */
+            transition: width 0.1s linear; /* Smooth update */
         }
     </style>
 </head>
@@ -798,6 +876,43 @@
         <img id="lightbox-image" src="" class="max-w-full max-h-full object-contain" style="image-rendering: pixelated;"/>
     </div>
 
+    <!-- Music Player --><div id="music-player" class="fixed bottom-4 left-4 z-[1010] ui-panel !p-2">
+        <!-- Flex container to manage layout inside the player -->
+        <div class="flex items-center gap-3 w-full"> 
+            <button id="play-pause-btn" class="icon-button flex-shrink-0">
+                <!-- Play Icon -->
+                <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-8 h-8 icon-pixelated">
+                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                </svg>
+                <!-- Pause Icon -->
+                <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-8 h-8 icon-pixelated" style="display: none;">
+                    <path d="M5.75 4.5a.75.75 0 00-.75.75v10.5a.75.75 0 001.5 0V5.25a.75.75 0 00-.75-.75zM14.25 4.5a.75.75 0 00-.75.75v10.5a.75.75 0 001.5 0V5.25a.75.75 0 00-.75-.75z" />
+                </svg>
+            </button>
+            <!-- Wrapper for controls that appear on hover -->
+            <div class="controls-wrapper flex items-center gap-3 flex-grow min-w-0"> 
+                 <button id="prev-track-btn" class="icon-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-8 h-8 icon-pixelated">
+                      <path d="M11.996 4.093a.75.75 0 01.008 1.06L7.152 10l4.852 4.847a.75.75 0 11-1.06 1.06L5.56 10.53a.75.75 0 010-1.06l5.376-5.376a.75.75 0 011.06-.001zM16.5 4.75a.75.75 0 00-1.5 0v10.5a.75.75 0 001.5 0V4.75z" />
+                    </svg>
+                </button>
+                <button id="next-track-btn" class="icon-button">
+                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-8 h-8 icon-pixelated">
+                      <path d="M8.004 4.093a.75.75 0 00-.008 1.06L12.848 10l-4.852 4.847a.75.75 0 101.06 1.06L14.44 10.53a.75.75 0 000-1.06L9.064 4.094a.75.75 0 00-1.06-.001zM3.5 4.75a.75.75 0 011.5 0v10.5a.75.75 0 01-1.5 0V4.75z" />
+                    </svg>
+                </button>
+                <div class="flex flex-col flex-grow min-w-0">
+                    <label id="current-song-title" class="text-lg text-slate-300 truncate">Lobby Music</label> 
+                    <input id="volume-slider" type="range" min="0" max="100" value="75" class="w-full">
+                    <div id="progress-bar-container">
+                        <div id="progress-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <audio id="lobby-audio" loop></audio>
+
 
     <!-- Firebase SDK --><script type="module">
         // Import the functions you need from the SDKs you need
@@ -916,6 +1031,18 @@
         const lightboxModal = document.getElementById('lightbox-modal');
         const lightboxImage = document.getElementById('lightbox-image');
 
+        // Music Player Elements
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
+        const volumeSlider = document.getElementById('volume-slider');
+        const lobbyAudio = document.getElementById('lobby-audio');
+        const prevTrackBtn = document.getElementById('prev-track-btn');
+        const nextTrackBtn = document.getElementById('next-track-btn');
+        const progressBarContainer = document.getElementById('progress-bar-container');
+        const progressBarFill = document.getElementById('progress-bar-fill');
+        const currentSongTitleEl = document.getElementById('current-song-title'); // Get the new title element
+
         let currentUser = null;
         let allBugs = []; // Master list of bugs from Firestore
         let allSuggestions = []; // Master list of suggestions from Firestore
@@ -945,6 +1072,15 @@
         let lastMouseX = 0;
         let lastMouseY = 0;
         const ZOOM_SPEED = 0.1;
+
+        // Music state variables
+        const playlist = [
+            { title: "I Wonder", url: 'https://github.com/babababoogiewayne-create/babababoogiewayne-create.github.io/raw/main/I%20Wonder.ogg' },
+            { title: "Gravitas Menu", url: 'https://github.com/babababoogiewayne-create/babababoogiewayne-create.github.io/raw/main/Gravitas%20Menu.wav' },
+            { title: "CoffeeBlack", url: 'https://github.com/babababoogiewayne-create/babababoogiewayne-create.github.io/raw/main/CoffeeBlack.ogg' }
+        ];
+        let currentSongIndex = 0;
+        let fadeInterval = null; // To manage the fade interval
 
         const statusStyles = {
             'Open': { bgColor: 'bg-yellow-400' },
@@ -2527,29 +2663,35 @@
         }
         
         function applyLightboxConstraints() {
+            if (!lightboxImage.naturalWidth) return; // Prevent errors if image not loaded
+
             const rect = lightboxImage.getBoundingClientRect();
             const viewportWidth = window.innerWidth;
             const viewportHeight = window.innerHeight;
 
             let constrainedPanX = panX;
             let constrainedPanY = panY;
+            
+            const currentImageWidth = lightboxImage.naturalWidth * lightboxZoomLevel;
+            const currentImageHeight = lightboxImage.naturalHeight * lightboxZoomLevel;
+
 
             // Constrain X pan
-            if (rect.width <= viewportWidth) {
-                constrainedPanX = 0; // Center if image is smaller than viewport
+            if (currentImageWidth <= viewportWidth) {
+                // Center if image width is smaller than viewport
+                constrainedPanX = (viewportWidth - currentImageWidth) / 2;
             } else {
-                const overpanXLeft = rect.left > 0 ? rect.left : 0;
-                const overpanXRight = rect.right < viewportWidth ? viewportWidth - rect.right : 0;
-                constrainedPanX += overpanXRight - overpanXLeft;
+                // Clamp left edge (panX should be <= 0)
+                // Clamp right edge (panX + width >= viewportWidth => panX >= viewportWidth - width)
+                constrainedPanX = Math.max(viewportWidth - currentImageWidth, Math.min(0, constrainedPanX));
             }
 
             // Constrain Y pan
-            if (rect.height <= viewportHeight) {
-                constrainedPanY = 0; // Center if image is smaller than viewport
+            if (currentImageHeight <= viewportHeight) {
+                // Center if image height is smaller than viewport
+                 constrainedPanY = (viewportHeight - currentImageHeight) / 2;
             } else {
-                const overpanYTop = rect.top > 0 ? rect.top : 0;
-                const overpanYBottom = rect.bottom < viewportHeight ? viewportHeight - rect.bottom : 0;
-                constrainedPanY += overpanYBottom - overpanYTop;
+                constrainedPanY = Math.max(viewportHeight - currentImageHeight, Math.min(0, constrainedPanY));
             }
 
             panX = constrainedPanX;
@@ -2560,20 +2702,33 @@
 
         function openLightbox(src) {
             const fullQualitySrc = src.replace('/q_auto,f_auto/', '/');
-            lightboxImage.setAttribute('src', fullQualitySrc);
-            lightboxModal.style.display = 'flex';
             
-            // Reset state on open
-            lightboxZoomLevel = 1;
-            panX = 0;
-            panY = 0;
-            isPanning = false;
-            updateLightboxTransform();
+             const setup = () => {
+                 if (!lightboxImage.naturalWidth) return; // Exit if image didn't load properly
+                lightboxModal.style.display = 'flex';
+                lightboxZoomLevel = 1;
+                panX = (window.innerWidth - lightboxImage.naturalWidth) / 2;
+                panY = (window.innerHeight - lightboxImage.naturalHeight) / 2;
+                isPanning = false;
+                applyLightboxConstraints(); // Apply initial centering/constraints
+             };
+
+            lightboxImage.onload = setup;
+            lightboxImage.setAttribute('src', fullQualitySrc);
+
+            // If image is already cached
+            if (lightboxImage.complete && lightboxImage.naturalWidth) {
+                setup();
+            } else if (lightboxImage.complete && !lightboxImage.naturalWidth) {
+                 console.error("Lightbox: Image failed to load or has zero dimensions.");
+                 closeLightbox(); // Close if image is invalid
+            }
         }
 
         function closeLightbox() {
             lightboxModal.style.display = 'none';
             lightboxImage.setAttribute('src', ''); // Clear src to stop loading
+            lightboxImage.onload = null;
         }
 
         lightboxModal.addEventListener('click', (e) => {
@@ -2584,36 +2739,44 @@
         });
 
         lightboxModal.addEventListener('wheel', (e) => {
-            e.preventDefault(); // Prevent page from scrolling
+            e.preventDefault();
+
+            if (!lightboxImage.naturalWidth) return; // Don't zoom if image isn't loaded
 
             const rect = lightboxImage.getBoundingClientRect();
             const mouseX = e.clientX;
             const mouseY = e.clientY;
 
-            // The point on the image that the mouse is over, relative to the image's top-left
-            const imagePointX = mouseX - rect.left;
-            const imagePointY = mouseY - rect.top;
+            // Point on the image under the cursor relative to image top-left (0-1 range)
+            const imageXRatio = (mouseX - rect.left) / rect.width;
+            const imageYRatio = (mouseY - rect.top) / rect.height;
 
             // Determine zoom direction and new zoom level
-            const delta = e.deltaY > 0 ? -ZOOM_SPEED : ZOOM_SPEED;
+            const delta = e.deltaY < 0 ? 1.15 : 1 / 1.15; // Multiplicative zoom
             const oldZoomLevel = lightboxZoomLevel;
-            lightboxZoomLevel = Math.max(1, Math.min(lightboxZoomLevel * (1 + delta), 10)); // Min zoom is 1x
+            lightboxZoomLevel = Math.max(1, Math.min(lightboxZoomLevel * delta, 15)); // Min zoom 1x, Max 15x
 
-            // Calculate the zoom factor
-            const zoomFactor = lightboxZoomLevel / oldZoomLevel;
+            // Calculate new image dimensions
+            const newWidth = lightboxImage.naturalWidth * lightboxZoomLevel;
+            const newHeight = lightboxImage.naturalHeight * lightboxZoomLevel;
 
-            // Adjust pan to keep the image point under the mouse
-            panX -= (imagePointX * (zoomFactor - 1));
-            panY -= (imagePointY * (zoomFactor - 1));
+            // Calculate how much the image grew/shrank at the cursor point
+            const deltaWidth = newWidth - rect.width;
+            const deltaHeight = newHeight - rect.height;
 
+            // Adjust pan to keep the point under cursor stationary
+            panX -= deltaWidth * imageXRatio;
+            panY -= deltaHeight * imageYRatio;
+            
+            clampPan(); // Ensure constraints after zoom
             updateLightboxTransform();
-            applyLightboxConstraints(); // Apply constraints after zooming
         });
+
 
         lightboxModal.addEventListener('contextmenu', e => e.preventDefault()); // Prevent right-click menu
 
         lightboxModal.addEventListener('mousedown', (e) => {
-            if ((e.button === 2 || e.button === 0) && lightboxZoomLevel > 1.01) { // Right or Left mouse button to pan, only if zoomed
+            if ((e.button === 0 || e.button === 2) && lightboxZoomLevel > 1.01) { // Left or Right mouse button to pan
                 e.preventDefault();
                 isPanning = true;
                 lastMouseX = e.clientX;
@@ -2631,10 +2794,11 @@
                 panX += dx;
                 panY += dy;
 
-                lastMouseX = e.clientX;
-                lastMouseY = e.clientY;
-
+                clampPan(); // Apply constraints live during the drag for a hard stop
                 updateLightboxTransform();
+
+                lastMouseX = e.clientX; // Update last position *after* using it
+                lastMouseY = e.clientY;
             }
         });
 
@@ -2642,7 +2806,6 @@
             if (isPanning) {
                 isPanning = false;
                 lightboxModal.classList.remove('is-panning');
-                applyLightboxConstraints(); // Snap back to bounds after panning
             }
         });
 
@@ -2650,6 +2813,143 @@
             if (e.target.classList.contains('attachment-thumbnail')) {
                 openLightbox(e.target.src);
             }
+        });
+
+        // --- MUSIC PLAYER LOGIC ---
+        let audioFadeInterval = null; // Store interval ID
+
+        function fadeAudio(targetVolume, duration = 500) {
+            clearInterval(audioFadeInterval); // Clear any existing fade
+            const startVolume = lobbyAudio.volume;
+            const stepTime = 20; // ms per step
+            const steps = duration / stepTime;
+            // Ensure volumeStep is not NaN if duration is 0 or steps is 0
+             const volumeStep = steps > 0 ? (targetVolume - startVolume) / steps : 0;
+            let currentStep = 0;
+
+            // If target is already reached, just set it and maybe pause
+            if (Math.abs(startVolume - targetVolume) < 0.01) {
+                 lobbyAudio.volume = targetVolume;
+                 if (targetVolume === 0) {
+                     lobbyAudio.pause();
+                 }
+                 return; // No need to interval
+            }
+
+
+            audioFadeInterval = setInterval(() => {
+                currentStep++;
+                let nextVolume = startVolume + volumeStep * currentStep;
+
+                if (currentStep >= steps || (volumeStep > 0 && nextVolume >= targetVolume) || (volumeStep < 0 && nextVolume <= targetVolume) ) {
+                    lobbyAudio.volume = targetVolume;
+                    clearInterval(audioFadeInterval);
+                    audioFadeInterval = null; // Clear interval ID
+                    if (targetVolume === 0) {
+                        lobbyAudio.pause(); // Pause only after fade out is complete
+                    }
+                } else {
+                    lobbyAudio.volume = nextVolume;
+                }
+            }, stepTime);
+        }
+
+        function loadSong(index) {
+            const song = playlist[index];
+            lobbyAudio.src = song.url;
+            currentSongTitleEl.textContent = song.title; // Update title display
+            lobbyAudio.volume = 0; // Start muted
+            lobbyAudio.play().then(() => {
+                fadeAudio(volumeSlider.value / 100); // Fade in to target volume
+                playIcon.style.display = 'none';
+                pauseIcon.style.display = 'block';
+            }).catch(error => { 
+                console.error("Audio playback error on load:", error);
+                playIcon.style.display = 'block'; // Reset icon on error
+                pauseIcon.style.display = 'none';
+                currentSongTitleEl.textContent = "Error Loading Track"; // Indicate error
+            });
+        }
+
+        function playNextSong() {
+            currentSongIndex = (currentSongIndex + 1) % playlist.length;
+            loadSong(currentSongIndex);
+        }
+
+        function playPrevSong() {
+            currentSongIndex = (currentSongIndex - 1 + playlist.length) % playlist.length;
+            loadSong(currentSongIndex);
+        }
+
+        playPauseBtn.addEventListener('click', async () => {
+             clearInterval(audioFadeInterval); // Stop any current fade immediately
+             audioFadeInterval = null;
+
+            try {
+                // If no song is loaded yet, load the first one
+                if (!lobbyAudio.src || lobbyAudio.src === window.location.href) { // Check if src is invalid/empty
+                    loadSong(currentSongIndex);
+                    return;
+                }
+
+                if (lobbyAudio.paused) {
+                    // It's paused or just finished fading out
+                    lobbyAudio.volume = 0; // Ensure it starts from 0
+                    await lobbyAudio.play();
+                    fadeAudio(volumeSlider.value / 100); // Fade in
+                    playIcon.style.display = 'none';
+                    pauseIcon.style.display = 'block';
+                } else {
+                    // It's currently playing, fade out then pause
+                    fadeAudio(0); // Fade out
+                    playIcon.style.display = 'block';
+                    pauseIcon.style.display = 'none';
+                }
+            } catch (error) {
+                console.error("Audio playback error on play/pause:", error);
+                 // Reset UI in case of error
+                playIcon.style.display = 'block';
+                pauseIcon.style.display = 'none';
+            }
+        });
+
+        nextTrackBtn.addEventListener('click', playNextSong);
+        prevTrackBtn.addEventListener('click', playPrevSong);
+        lobbyAudio.addEventListener('ended', playNextSong);
+
+        volumeSlider.addEventListener('input', (e) => {
+            const value = e.target.value; // 0 to 100
+            const targetVolume = value / 100;
+             // Only adjust if not currently fading out
+            if (!lobbyAudio.paused && audioFadeInterval === null) { 
+                 lobbyAudio.volume = targetVolume;
+            } else if (lobbyAudio.paused) {
+                 // If paused, just set the volume directly for the next play
+                 lobbyAudio.volume = targetVolume;
+            }
+            // If fading out, the fade will continue to 0. User adjustment takes effect next time.
+        });
+
+        // Initialize volume from slider (but don't play)
+        lobbyAudio.volume = volumeSlider.value / 100;
+
+        // Music Progress Bar Logic
+        lobbyAudio.addEventListener('timeupdate', () => {
+            if (lobbyAudio.duration && isFinite(lobbyAudio.duration)) {
+                const progressPercent = (lobbyAudio.currentTime / lobbyAudio.duration) * 100;
+                progressBarFill.style.width = `${progressPercent}%`;
+            } else {
+                progressBarFill.style.width = '0%';
+            }
+        });
+
+        progressBarContainer.addEventListener('click', (e) => {
+            if (!lobbyAudio.duration || !isFinite(lobbyAudio.duration)) return; // Can't seek if duration isn't known or invalid
+
+            const barRect = progressBarContainer.getBoundingClientRect();
+            const clickX = e.clientX - barRect.left;
+            const seekFraction = clickX / barRect.width;
+            lobbyAudio.currentTime = lobbyAudio.duration * seekFraction;
         });
 
 
@@ -2858,5 +3158,4 @@
 
 </body>
 </html>
-
 
