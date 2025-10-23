@@ -243,11 +243,11 @@
         }
 
         /* Collapsible Form Styles */
-        #bug-form-toggle, #suggestion-form-toggle {
+        #bug-form-toggle, #suggestion-form-toggle, #announcement-form-toggle {
             cursor: pointer;
             transition: margin-bottom 0.3s ease-in-out;
         }
-        #bug-form, #suggestion-form {
+        #bug-form, #suggestion-form, #announcement-form {
             transition: opacity 0.3s ease-in-out, visibility 0s 0.3s, max-height 0.3s ease-in-out, margin-top 0.3s ease-in-out;
             max-height: 2000px; /* Large enough for content */
             overflow: hidden;
@@ -256,14 +256,16 @@
             margin-top: 1rem;
         }
         #bug-form-container.form-collapsed #bug-form,
-        #suggestion-form-container.form-collapsed #suggestion-form {
+        #suggestion-form-container.form-collapsed #suggestion-form,
+        #announcement-form-container.form-collapsed #announcement-form {
             max-height: 0;
             opacity: 0;
             visibility: hidden;
             margin-top: 0;
         }
         #bug-form-container.form-collapsed #bug-form-toggle,
-        #suggestion-form-container.form-collapsed #suggestion-form-toggle {
+        #suggestion-form-container.form-collapsed #suggestion-form-toggle,
+        #announcement-form-container.form-collapsed #announcement-form-toggle {
             text-align: center;
             margin-bottom: 0;
         }
@@ -480,7 +482,10 @@
                     <li>
                         <button id="go-to-suggestions-btn" class="gravitas-button !w-full !text-left">Game Suggestions</button>
                     </li>
-                    <!-- More pages can be added here in the future --></ul>
+                    <li>
+                        <button id="go-to-announcements-btn" class="gravitas-button !w-full !text-left">Announcements</button>
+                    </li>
+                </ul>
             </nav>
         </div>
     </div>
@@ -759,6 +764,50 @@
         </div>
     </div>
 
+    <!-- Announcements Page --><div id="announcements-page" class="container mx-auto max-w-4xl p-4 sm:p-6 lg:p-8" style="display: none;">
+        <header class="text-center mb-8">
+            <div class="flex justify-center items-center mb-4">
+                <h1 class="font-bold text-white text-shadow-heavy" style="font-size: 52px;">
+                    Announcements
+                </h1>
+            </div>
+        </header>
+
+        <div class="space-y-8">
+            <!-- Admin-only Announcement Form -->
+            <div id="announcement-form-container" class="ui-panel" style="display: none;">
+                <h2 id="announcement-form-toggle" class="text-white text-shadow-heavy" style="font-size: 30px; margin-bottom: 1rem; cursor: pointer;">Post New Announcement</h2>
+                <form id="announcement-form" class="space-y-4">
+                    <div>
+                        <label for="announcement-title" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Title</label>
+                        <input type="text" id="announcement-title" required class="gravitas-input" maxlength="128">
+                        <div id="announcement-title-counter" class="char-counter">0/128</div>
+                    </div>
+                    <div>
+                        <label for="announcement-body" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Body</label>
+                        <textarea id="announcement-body" rows="5" required class="gravitas-input" maxlength="16384"></textarea>
+                        <div id="announcement-body-counter" class="char-counter">0/16384</div>
+                    </div>
+                    <div>
+                        <label for="announcement-attachment" class="block font-medium text-slate-300 mb-1 text-shadow-heavy" style="font-size: 20px;">Attach Images (Up to 5)</label>
+                        <input type="file" id="announcement-attachment" class="gravitas-input" accept="image/*" multiple>
+                        <div id="announcement-attachment-preview-container" class="flex gap-2 flex-wrap"></div>
+                    </div>
+                    <button type="submit" class="gravitas-button mt-4">Post Announcement</button>
+                    <div id="announcement-upload-progress" class="text-center text-lg text-yellow-400 text-shadow-heavy" style="display: none;"></div>
+                </form>
+            </div>
+
+            <!-- Public Announcement List -->
+            <div id="announcement-list-wrapper">
+                <h2 class="text-white text-shadow-heavy" style="font-size: 36px;">Latest News</h2>
+                <div id="announcement-list" class="space-y-4">
+                    <div class="ui-panel p-4 text-center text-slate-400" style="font-size: 24px;">Loading announcements...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Bug Detail Modal --><div id="bug-detail-modal" class="fixed inset-0 bg-black/60 items-center justify-center p-4" style="display: none; z-index: 1040;">
         <div class="ui-panel w-full max-w-3xl max-h-[90vh] flex flex-col">
@@ -911,7 +960,7 @@
             </div>
         </div>
     </div>
-    <audio id="lobby-audio" loop></audio>
+    <audio id="lobby-audio"></audio> <!-- Removed loop attribute -->
 
 
     <!-- Firebase SDK --><script type="module">
@@ -991,8 +1040,10 @@
         const navAuthContainer = document.getElementById('nav-auth-container');
         const bugTrackerPage = document.getElementById('bug-tracker-page');
         const suggestionsPage = document.getElementById('suggestions-page');
+        const announcementsPage = document.getElementById('announcements-page');
         const goToTrackerBtn = document.getElementById('go-to-tracker-btn');
         const goToSuggestionsBtn = document.getElementById('go-to-suggestions-btn');
+        const goToAnnouncementsBtn = document.getElementById('go-to-announcements-btn');
 
         // Suggestions Elements
         const suggestionFormContainer = document.getElementById('suggestion-form-container');
@@ -1027,6 +1078,19 @@
         const suggestionCommentAttachment = document.getElementById('suggestion-comment-attachment');
         const suggestionCommentAttachmentPreviewContainer = document.getElementById('suggestion-comment-attachment-preview-container');
 
+        // Announcement Elements
+        const announcementFormContainer = document.getElementById('announcement-form-container');
+        const announcementFormToggle = document.getElementById('announcement-form-toggle');
+        const announcementForm = document.getElementById('announcement-form');
+        const announcementTitleInput = document.getElementById('announcement-title');
+        const announcementTitleCounter = document.getElementById('announcement-title-counter');
+        const announcementBodyInput = document.getElementById('announcement-body');
+        const announcementBodyCounter = document.getElementById('announcement-body-counter');
+        const announcementAttachmentInput = document.getElementById('announcement-attachment');
+        const announcementAttachmentPreviewContainer = document.getElementById('announcement-attachment-preview-container');
+        const announcementUploadProgressEl = document.getElementById('announcement-upload-progress');
+        const announcementList = document.getElementById('announcement-list');
+
         // Lightbox Modal Elements
         const lightboxModal = document.getElementById('lightbox-modal');
         const lightboxImage = document.getElementById('lightbox-image');
@@ -1046,6 +1110,7 @@
         let currentUser = null;
         let allBugs = []; // Master list of bugs from Firestore
         let allSuggestions = []; // Master list of suggestions from Firestore
+        let allAnnouncements = []; // Master list of announcements from Firestore
 
         let editingCommentId = null;
         let activeBugId = null; 
@@ -1059,6 +1124,7 @@
         let commentAttachmentFiles = [];
         let suggestionAttachmentFiles = [];
         let suggestionCommentAttachmentFiles = [];
+        let announcementAttachmentFiles = [];
 
         let statusChart = null;
         let featureChart = null;
@@ -1079,7 +1145,7 @@
             { title: "Gravitas Menu", url: 'https://github.com/babababoogiewayne-create/babababoogiewayne-create.github.io/raw/main/Gravitas%20Menu.wav' },
             { title: "CoffeeBlack", url: 'https://github.com/babababoogiewayne-create/babababoogiewayne-create.github.io/raw/main/CoffeeBlack.ogg' }
         ];
-        let currentSongIndex = 0;
+        let currentSongIndex = Math.floor(Math.random() * playlist.length); // Start on a random song
         let fadeInterval = null; // To manage the fade interval
 
         const statusStyles = {
@@ -1091,6 +1157,11 @@
 
         const priorityValues = { 'Low': 0, 'Medium': 1, 'High': 2, 'Critical': 3, 'Urgent': 4 };
         
+        // --- INITIALIZE ---
+        // Pre-load random song title and src
+        currentSongTitleEl.textContent = playlist[currentSongIndex].title;
+        lobbyAudio.src = playlist[currentSongIndex].url;
+
         // --- CHARACTER COUNTERS ---
         function setupCounter(inputEl, counterEl, maxLength) {
             inputEl.addEventListener('input', () => {
@@ -1103,6 +1174,8 @@
         setupCounter(suggestionTitleInput, suggestionTitleCounter, 64);
         setupCounter(suggestionDescriptionInput, suggestionDescriptionCounter, 8192);
         setupCounter(suggestionCommentInput, suggestionCommentInputCounter, 1024);
+        setupCounter(announcementTitleInput, announcementTitleCounter, 128);
+        setupCounter(announcementBodyInput, announcementBodyCounter, 16384);
 
         bugFormToggle.addEventListener('click', () => {
             const container = document.getElementById('bug-form-container');
@@ -1121,6 +1194,16 @@
                 suggestionFormToggle.textContent = 'Submit a New Suggestion +';
             } else {
                 suggestionFormToggle.textContent = 'Submit a New Suggestion';
+            }
+        });
+
+        announcementFormToggle.addEventListener('click', () => {
+            const container = document.getElementById('announcement-form-container');
+            const isNowCollapsed = container.classList.toggle('form-collapsed');
+            if (isNowCollapsed) {
+                announcementFormToggle.textContent = 'Post New Announcement +';
+            } else {
+                announcementFormToggle.textContent = 'Post New Announcement';
             }
         });
 
@@ -1192,6 +1275,16 @@
                     suggestionFormContainer.classList.add('form-expanded-once');
                 }
 
+                // Show admin-only forms if user is admin
+                if (currentUser.email === ADMIN_EMAIL) {
+                    announcementFormContainer.style.display = 'block';
+                    if (!announcementFormContainer.classList.contains('form-expanded-once')) {
+                        announcementFormContainer.classList.add('form-collapsed');
+                        announcementFormToggle.textContent = 'Post New Announcement +';
+                        announcementFormContainer.classList.add('form-expanded-once');
+                    }
+                }
+
 
             } else {
                 const loginBtn = document.createElement('button');
@@ -1211,6 +1304,9 @@
                 suggestionFormContainer.style.display = 'none';
                 suggestionFormContainer.classList.remove('form-collapsed', 'form-expanded-once');
                 suggestionFormToggle.textContent = 'Submit a New Suggestion';
+                announcementFormContainer.style.display = 'none';
+                announcementFormContainer.classList.remove('form-collapsed', 'form-expanded-once');
+                announcementFormToggle.textContent = 'Post New Announcement';
             }
             updateMyBugsButtonState();
         }
@@ -1265,10 +1361,25 @@
                 };
                 allSuggestions.push(suggestion);
             });
-            // We will create this function in the next step
             processAndRenderSuggestions(); 
         });
         
+        const announcementsCollection = collection(db, "announcements");
+        const qAnnouncements = query(announcementsCollection, orderBy('createdAt', 'desc')); // Order by newest first
+        onSnapshot(qAnnouncements, (querySnapshot) => {
+            allAnnouncements = [];
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                const announcement = {
+                    id: doc.id,
+                    ...data,
+                    createdAt: data.createdAt ? data.createdAt.toDate() : new Date()
+                };
+                allAnnouncements.push(announcement);
+            });
+            renderAnnouncements(allAnnouncements); 
+        });
+
         // --- DASHBOARD & ANALYTICS ---
         function updateDashboard(bugs) {
             const resolvedBugs = bugs.filter(b => b.status === 'Resolved').length;
@@ -1628,6 +1739,46 @@
             });
         }
 
+        // --- ANNOUNCEMENT RENDERING ---
+        function renderAnnouncements(announcements) {
+            announcementList.innerHTML = '';
+            if (announcements.length === 0) {
+                announcementList.innerHTML = `<div class="ui-panel p-4 text-center text-slate-400" style="font-size: 24px;">No announcements yet.</div>`;
+                return;
+            }
+
+            announcements.forEach(announcement => {
+                const announcementElement = document.createElement('div');
+                announcementElement.className = 'ui-panel';
+                announcementElement.setAttribute('data-announcement-id', announcement.id);
+
+                const isUserAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
+                const formattedDate = announcement.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                
+                let attachmentsHTML = '';
+                if (announcement.attachments && announcement.attachments.length > 0) {
+                    attachmentsHTML = `<div class="flex flex-wrap gap-4 mt-4">${announcement.attachments.map(att => `
+                        <div class="text-center">
+                            <img src="${att.url}" class="attachment-thumbnail cursor-pointer border-2 border-gray-600 hover:border-blue-400" style="image-rendering: pixelated;" />
+                            <p class="text-sm text-gray-400 text-shadow-heavy">${att.description || ''}</p>
+                        </div>`).join('')}</div>`;
+                }
+                
+                const deleteButtonHTML = isUserAdmin ? `<button class="delete-announcement-btn icon-button absolute top-2 right-2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-red-500 hover:text-red-400 icon-pixelated"><path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.58.22-2.365.468a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.023 2.5.067V3.75a1.25 1.25 0 00-1.25-1.25h-2.5A1.25 1.25 0 007.5 3.75v.317c.827-.044 1.66-.067 2.5-.067zM8.25 6.75a.75.75 0 01.75.75v7.5a.75.75 0 01-1.5 0v-7.5a.75.75 0 01.75-.75zm3.5 0a.75.75 0 01.75.75v7.5a.75.75 0 01-1.5 0v-7.5a.75.75 0 01.75-.75z" clip-rule="evenodd" /></svg></button>` : '';
+
+                announcementElement.innerHTML = `
+                    <div class="relative">
+                        <div class="font-bold text-white text-shadow-heavy markdown-content pr-8" style="font-size: 28px;">${marked.parse(announcement.title || '')}</div>
+                        <div class="text-slate-500 text-shadow-heavy mb-4" style="font-size: 16px;">Posted on ${formattedDate}</div>
+                        <div class="text-slate-300 my-2 text-shadow-heavy markdown-content" style="font-size: 20px;">${marked.parse(announcement.body || '')}</div>
+                        ${attachmentsHTML}
+                        ${deleteButtonHTML}
+                    </div>
+                `;
+                announcementList.appendChild(announcementElement);
+            });
+        }
+
 
         // --- MODAL LOGIC ---
         function openDetailView(bugId) {
@@ -1917,6 +2068,7 @@
         setupAttachmentHandler(commentAttachmentInput, commentAttachmentPreviewContainer, commentAttachmentFiles);
         setupAttachmentHandler(suggestionAttachmentInput, suggestionAttachmentPreviewContainer, suggestionAttachmentFiles);
         setupAttachmentHandler(suggestionCommentAttachment, suggestionCommentAttachmentPreviewContainer, suggestionCommentAttachmentFiles);
+        setupAttachmentHandler(announcementAttachmentInput, announcementAttachmentPreviewContainer, announcementAttachmentFiles);
 
         async function uploadToCloudinary(file) {
             const formData = new FormData();
@@ -2308,6 +2460,28 @@
             }
         });
 
+        announcementList.addEventListener('click', (e) => {
+            const deleteBtn = e.target.closest('.delete-announcement-btn');
+            if (deleteBtn) {
+                const announcementElement = e.target.closest('[data-announcement-id]');
+                const announcementId = announcementElement.dataset.announcementId;
+                
+                if (deleteBtn.dataset.confirm === 'true') {
+                    deleteDoc(doc(db, "announcements", announcementId));
+                } else {
+                    const originalContent = deleteBtn.innerHTML;
+                    deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-yellow-400 icon-pixelated"><path fill-rule="evenodd" d="M8.22 1.754a.75.75 0 011.06 0l6.25 6.25a.75.75 0 010 1.06l-6.25 6.25a.75.75 0 11-1.06-1.06L13.94 11.5H3.75a.75.75 0 010-1.5h10.19L8.22 2.814a.75.75 0 010-1.06z" clip-rule="evenodd" /></svg>`;
+                    deleteBtn.dataset.confirm = 'true';
+                    setTimeout(() => {
+                        if (deleteBtn.dataset.confirm === 'true') {
+                            deleteBtn.innerHTML = originalContent;
+                            deleteBtn.dataset.confirm = 'false';
+                        }
+                    }, 3000);
+                }
+            }
+        });
+
         bugForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!currentUser) return;
@@ -2433,6 +2607,53 @@
             } finally {
                 submitButton.disabled = false;
                 suggestionUploadProgressEl.style.display = 'none';
+            }
+        });
+
+        announcementForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser || currentUser.email !== ADMIN_EMAIL) return;
+
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            announcementUploadProgressEl.style.display = 'block';
+
+            const attachments = await Promise.all(
+                announcementAttachmentFiles.map(async (fileData) => {
+                    announcementUploadProgressEl.textContent = `Uploading ${fileData.file.name}...`;
+                    const url = await uploadToCloudinary(fileData.file);
+                    return { url, description: fileData.description };
+                })
+            );
+
+            if (attachments.some(att => !att.url)) {
+                submitButton.disabled = false;
+                return;
+            }
+
+            const newAnnouncement = {
+                title: announcementTitleInput.value,
+                body: announcementBodyInput.value,
+                author: currentUser.email,
+                createdAt: new Date(),
+                attachments: attachments,
+            };
+
+            try {
+                await addDoc(announcementsCollection, newAnnouncement);
+                announcementForm.reset();
+                updatePreview([], announcementAttachmentPreviewContainer, announcementAttachmentFiles, announcementAttachmentInput);
+                // Collapse the form
+                const container = document.getElementById('announcement-form-container');
+                if (!container.classList.contains('form-collapsed')) {
+                    container.classList.add('form-collapsed');
+                    announcementFormToggle.textContent = 'Post New Announcement +';
+                }
+            } catch (error) {
+                console.error("Error adding announcement: ", error);
+            } finally {
+                submitButton.disabled = false;
+                announcementUploadProgressEl.style.display = 'none';
             }
         });
 
@@ -2642,13 +2863,22 @@
 
         goToTrackerBtn.addEventListener('click', () => {
             suggestionsPage.style.display = 'none';
+            announcementsPage.style.display = 'none';
             bugTrackerPage.style.display = 'block';
             closeNavPanel();
         });
 
         goToSuggestionsBtn.addEventListener('click', () => {
             bugTrackerPage.style.display = 'none';
+            announcementsPage.style.display = 'none';
             suggestionsPage.style.display = 'block';
+            closeNavPanel();
+        });
+
+        goToAnnouncementsBtn.addEventListener('click', () => {
+            bugTrackerPage.style.display = 'none';
+            suggestionsPage.style.display = 'none';
+            announcementsPage.style.display = 'block';
             closeNavPanel();
         });
 
